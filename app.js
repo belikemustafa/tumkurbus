@@ -1,11 +1,28 @@
 (() => {
+  function showStatusError(msg) {
+    const statusEl = document.getElementById("feedStatusText");
+    if (statusEl) statusEl.textContent = msg;
+    const list = document.getElementById("fleetList");
+    if (list && !list.innerHTML.trim()) {
+      list.innerHTML = `<div style="padding:12px;border-radius:10px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:12px;line-height:1.5;"><strong>Startup Error:</strong> ${msg}</div>`;
+    }
+  }
+
+  function on(id, event, handler) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(event, handler);
+  }
+
+  if (!window.TumkurData) {
+    showStatusError("routes.js failed to load. Make sure routes.js is in the same folder as index.html.");
+    return;
+  }
+
   const {
     TUMKUR_CENTER,
     LANDMARKS,
     ROUTES,
     STOPS,
-    getStopById,
-    estimateFares,
     haversineMeters,
     bearingDegrees,
     snapRoutesToRealRoads,
@@ -13,6 +30,15 @@
     spawnLiveBus,
     stepFleet
   } = window.TumkurData;
+
+  // Safe fallbacks in case an older routes.js was cached
+  const getStopById =
+    window.TumkurData.getStopById ||
+    ((id) => STOPS.find((s) => s.id === id) || null);
+
+  const estimateFares =
+    window.TumkurData.estimateFares ||
+    (() => null);
 
   const MAP_STYLES = {
     street: {
@@ -91,23 +117,44 @@
 
   const busMarkers = new Map();
   let stopMarkerEntries = [];
+  let map = null;
+  let inspector3D = null;
+
+  const mapEl = document.getElementById("map");
+
+  // Lazy-create the 3D Bus Inspector only when visible so hidden canvas never fails WebGL
+  function getInspector3D() {
+    if (inspector3D) return inspector3D;
+    if (!window.Bus3D || !window.THREE) return null;
+    try {
+      const canvas = document.getElementById("inspectorCanvas");
+      if (!canvas) return null;
+      inspector3D = new window.Bus3D.BusInspector3D(canvas);
+      return inspector3D;
+    } catch (err) {
+      console.warn("3D Inspector WebGL fallback:", err);
+      return null;
+    }
+  }
 
   // Language formatting helpers for Kannada + English toggle
   function formatStopText(stop) {
     if (!stop) return "";
-    if (stopLangMode === "kn") return stop.kn || stop.name;
+    const kn = stop.kn || stop.name;
+    if (stopLangMode === "kn") return kn;
     if (stopLangMode === "en") return stop.name;
-    return `${stop.kn} · ${stop.name}`;
+    return kn === stop.name ? stop.name : `${kn} · ${stop.name}`;
   }
 
   function formatStopPinHtml(stop) {
+    const kn = stop.kn || stop.name;
     if (stopLangMode === "kn") {
-      return `<span class="stop-kn">${stop.kn || stop.name}</span>`;
+      return `<span class="stop-kn">${kn}</span>`;
     }
     if (stopLangMode === "en") {
       return `<span class="stop-en">${stop.name}</span>`;
     }
-    return `<span class="stop-kn">${stop.kn || stop.name}</span><span class="stop-en">${stop.name}</span>`;
+    return `<span class="stop-kn">${kn}</span><span class="stop-en">${stop.name}</span>`;
   }
 
   function getBusNextStopDisplay(bus) {
@@ -115,29 +162,6 @@
     if (!stop) return bus.nextStopName || "En Route";
     return formatStopText(stop);
   }
-
-  // Strict 2D Top-Down Map with 3D Buses
-  const mapEl = document.getElementById("map");
-  const map = new maplibregl.Map({
-    container: "map",
-    style: MAP_STYLES.street,
-    center: TUMKUR_CENTER,
-    zoom: 13.5,
-    pitch: 0,
-    maxPitch: 0,
-    bearing: 0,
-    dragRotate: false,
-    pitchWithRotate: false,
-    touchPitch: false,
-    antialias: true
-  });
-
-  map.touchZoomRotate.disableRotation();
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
-
-  const inspector3D = new window.Bus3D.BusInspector3D(
-    document.getElementById("inspectorCanvas")
-  );
 
   function makeCircleGeoJSON(coord, radiusMeters) {
     if (!coord) return { type: "FeatureCollection", features: [] };
@@ -157,6 +181,7 @@
   }
 
   function updateAlertZoneLayer() {
+    if (!map) return;
     const src = map.getSource("alert-zone");
     if (!src) return;
     if (alertConfig.active && alertConfig.coord) {
@@ -184,11 +209,14 @@
   }
 
   function updateRouteSourceData() {
+    if (!map) return;
     const src = map.getSource("tumkur-routes");
     if (src) src.setData(buildRouteGeoJSON());
   }
 
   function attachMapLayers() {
+    if (!map) return;
+
     map.addSource("alert-zone", {
       type: "geojson",
       data:
@@ -244,57 +272,34 @@
       }
     });
 
-    const busLayer = window.Bus3D.createMapBusLayer({
-      originLng: TUMKUR_CENTER[0],
-      originLat: TUMKUR_CENTER[1],
-      getFleet: () => getVisibleFleet(),
-      getBoostScale: () => boostScale,
-      getSelectedBusId: () => selectedBusId
-    });
-    map.addLayer(busLayer);
+    // Add 3D buses layer safely (keeps working with 2D badges if Three.js ever fails)
+    if (window.Bus3D && window.THREE) {
+      try {
+        const busLayer = window.Bus3D.createMapBusLayer({
+          originLng: TUMKUR_CENTER[0],
+          originLat: TUMKUR_CENTER[1],
+          getFleet: () => getVisibleFleet(),
+          getBoostScale: () => boostScale,
+          getSelectedBusId: () => selectedBusId
+        });
+        map.addLayer(busLayer);
+      } catch (err) {
+        console.warn("3D bus layer warning:", err);
+      }
+    }
 
     applyRouteLayerFilter();
   }
 
-  map.on("style.load", attachMapLayers);
-
   function syncStopLabelZoomClass() {
+    if (!map || !mapEl) return;
     const z = map.getZoom();
     mapEl.classList.toggle("show-major-stops", z >= 12.2);
     mapEl.classList.toggle("show-all-stops", z >= 13.7);
   }
-  map.on("zoom", syncStopLabelZoomClass);
-  syncStopLabelZoomClass();
-
-  map.on("click", (e) => {
-    if (pickingAlertOnMap) {
-      pickingAlertOnMap = false;
-      mapEl.classList.remove("picking-location");
-      setUserAlertLocation([e.lngLat.lng, e.lngLat.lat], "Pinned Map Location");
-      document.getElementById("alertModal").classList.remove("hidden");
-      showToast("Alert location pinned on map.");
-      return;
-    }
-
-    const visible = getVisibleFleet();
-    let closestBus = null;
-    let bestPx = 30;
-    visible.forEach((bus) => {
-      const pt = map.project([bus.lng, bus.lat]);
-      const d = Math.hypot(pt.x - e.point.x, pt.y - e.point.y);
-      if (d < bestPx) {
-        bestPx = d;
-        closestBus = bus;
-      }
-    });
-
-    if (closestBus) {
-      selectBus(closestBus.id, false);
-    }
-  });
 
   function applyRouteLayerFilter() {
-    if (!map.getLayer("routes-core")) return;
+    if (!map || !map.getLayer("routes-core")) return;
 
     const selectedBus = selectedBusId ? fleet.find((b) => b.id === selectedBusId) : null;
     let filter = null;
@@ -331,8 +336,8 @@
     return fleet.filter((b) => b.routeId === selectedRouteFilter);
   }
 
-  // Render Bus Stops Across Tumakuru & Bengaluru Corridor with Kannada + English support
   function initStopMarkers() {
+    if (!map) return;
     stopMarkerEntries.forEach(({ marker }) => marker.remove());
     stopMarkerEntries = STOPS.map((stop) => {
       const el = document.createElement("div");
@@ -349,10 +354,11 @@
           showToast(`Alert location set to ${formatStopText(stop)}.`);
           return;
         }
-        document.getElementById("stopSelect").value = stop.id;
+        const stopSel = document.getElementById("stopSelect");
+        if (stopSel) stopSel.value = stop.id;
         renderArrivalBoard();
         switchTab("stops");
-        showToast(`${formatStopText(stop)} · Routes: ${stop.routeIds.join(", ") || "Local"}`);
+        showToast(`${formatStopText(stop)} · Routes: ${(stop.routeIds || []).join(", ") || "Local"}`);
       });
 
       const marker = new maplibregl.Marker({ element: el, anchor: "left" })
@@ -371,7 +377,7 @@
       if (!activeRouteId) {
         el.classList.remove("route-active", "dimmed");
       } else {
-        const onRoute = stop.routeIds.includes(activeRouteId);
+        const onRoute = (stop.routeIds || []).includes(activeRouteId);
         el.classList.toggle("route-active", onRoute);
         el.classList.toggle("dimmed", !onRoute);
       }
@@ -379,6 +385,7 @@
   }
 
   function populateStopDropdown(selectEl, includePlaceholder = null, defaultId = null) {
+    if (!selectEl) return;
     const prevVal = selectEl.value;
     const opts = [];
     if (includePlaceholder) {
@@ -395,7 +402,6 @@
     }
   }
 
-  // Refresh all Kannada/English stop labels across map + dropdowns + tabs
   function refreshStopLanguageUI() {
     stopMarkerEntries.forEach(({ stop, el }) => {
       const labelEl = el.querySelector(".bus-stop-label");
@@ -422,6 +428,7 @@
   }
 
   function syncBusMarkers() {
+    if (!map) return;
     const visible = getVisibleFleet();
     const visibleIds = new Set(visible.map((b) => b.id));
     const now = performance.now();
@@ -475,24 +482,30 @@
     tag.style.background = bus.color;
 
     const acBadge = document.getElementById("inspAcBadge");
-    acBadge.classList.toggle("hidden", !bus.isAC);
+    if (acBadge) acBadge.classList.toggle("hidden", !bus.isAC);
 
     document.getElementById("inspReg").textContent = bus.reg;
 
     const routeObj = ROUTES.find((r) => r.id === bus.routeId);
     const banner = document.getElementById("selectedRouteBanner");
-    document.getElementById("selectedRouteText").textContent = routeObj
-      ? `Route ${routeObj.id}: ${routeObj.name}`
-      : `Route ${bus.routeId}`;
-    banner.classList.remove("hidden");
+    if (banner) {
+      document.getElementById("selectedRouteText").textContent = routeObj
+        ? `Route ${routeObj.id}: ${routeObj.name}`
+        : `Route ${bus.routeId}`;
+      banner.classList.remove("hidden");
+    }
 
-    inspector3D.resize();
-    inspector3D.setBus(bus);
+    const insp = getInspector3D();
+    if (insp) {
+      insp.resize();
+      insp.setBus(bus);
+    }
+
     updateInspectorMetrics(bus);
     applyRouteLayerFilter();
     renderFleetList();
 
-    if (flyToBus) {
+    if (flyToBus && map) {
       map.flyTo({
         center: [bus.lng, bus.lat],
         zoom: Math.max(map.getZoom(), 15.2),
@@ -508,30 +521,34 @@
     followBusActive = false;
     updateFollowButton();
     document.getElementById("busInspector").classList.add("hidden");
-    document.getElementById("selectedRouteBanner").classList.add("hidden");
+    const banner = document.getElementById("selectedRouteBanner");
+    if (banner) banner.classList.add("hidden");
     applyRouteLayerFilter();
     renderFleetList();
   }
 
   function updateInspectorMetrics(bus) {
-    document.getElementById("inspService").textContent =
-      bus.livery || (bus.isAC ? "AC Coach" : "City Bus");
+    const svc = document.getElementById("inspService");
+    if (svc) svc.textContent = bus.livery || (bus.isAC ? "AC Coach" : "City Bus");
     document.getElementById("inspSpeed").textContent =
       bus.speedKmh > 0 ? `${bus.speedKmh} km/h` : "At Stop";
     document.getElementById("inspNextStop").textContent = getBusNextStopDisplay(bus);
-    document.getElementById("inspEtaCrowd").textContent =
-      `${bus.etaMin || 2} min · ${bus.crowd || "Moderate"}`;
+    const etaCrowd = document.getElementById("inspEtaCrowd");
+    if (etaCrowd) {
+      etaCrowd.textContent = `${bus.etaMin || 2} min · ${bus.crowd || "Moderate"}`;
+    }
   }
 
-  // --- KSRTC Ticket Fare Estimator UI ---
+  // --- KSRTC Ticket Fare Estimator ---
   function renderFareEstimator() {
-    const fromId = document.getElementById("fareFromSelect").value;
-    const toId = document.getElementById("fareToSelect").value;
-    const passengerType = document.getElementById("farePassengerSelect").value;
+    const fromEl = document.getElementById("fareFromSelect");
+    const toEl = document.getElementById("fareToSelect");
+    const passEl = document.getElementById("farePassengerSelect");
     const summaryEl = document.getElementById("fareSummary");
     const resultsEl = document.getElementById("fareResults");
+    if (!fromEl || !toEl || !passEl || !summaryEl || !resultsEl) return;
 
-    const est = estimateFares(fromId, toId, passengerType);
+    const est = estimateFares(fromEl.value, toEl.value, passEl.value);
     if (!est) {
       summaryEl.innerHTML = `<span>Select two different stops to estimate KSRTC fares.</span>`;
       resultsEl.innerHTML = "";
@@ -586,7 +603,7 @@
           `;
         })
         .join("") +
-      `<p class="fare-note">Estimates follow Karnataka's Nov 2026 KSRTC fare structure (₹10 min city · ₹100 Tumakuru–Bengaluru Express). Online booking/reservation fees or toll variations may apply.</p>`;
+      `<p class="fare-note">Estimates follow Karnataka's Nov 2026 KSRTC fare structure (₹10 min city · ₹100 Tumakuru–Bengaluru Express). Online reservation or toll variations may apply.</p>`;
 
     resultsEl.querySelectorAll("[data-jump-route]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -597,10 +614,12 @@
         applyRouteLayerFilter();
         switchTab("fleet");
         renderFleetList();
-        if (rid.startsWith("BLR-")) {
-          map.flyTo({ ...LANDMARKS.corridor, pitch: 0, bearing: 0, duration: 900 });
-        } else {
-          map.flyTo({ ...LANDMARKS.tumkur, pitch: 0, bearing: 0, duration: 900 });
+        if (map) {
+          if (rid.startsWith("BLR-")) {
+            map.flyTo({ ...LANDMARKS.corridor, pitch: 0, bearing: 0, duration: 900 });
+          } else {
+            map.flyTo({ ...LANDMARKS.tumkur, pitch: 0, bearing: 0, duration: 900 });
+          }
         }
       });
     });
@@ -609,43 +628,49 @@
   // --- Pass-By Fleet Alert Engine ---
   function initAlertModalOptions() {
     const fleetSel = document.getElementById("alertFleetSelect");
-    fleetSel.innerHTML = [
-      `<option value="ALL">All Live Buses (Tumakuru + Bengaluru)</option>`,
-      `<option value="CITY">All Tumakuru City Buses</option>`,
-      `<option value="BLR">All Buses to Bengaluru</option>`,
-      `<option value="BLR_AC">All AC Buses to Bengaluru</option>`,
-      ...ROUTES.map(
-        (r) => `<option value="${r.id}">Route ${r.id}${r.isAC ? " [AC]" : ""} — ${r.name}</option>`
-      )
-    ].join("");
+    if (fleetSel) {
+      fleetSel.innerHTML = [
+        `<option value="ALL">All Live Buses (Tumakuru + Bengaluru)</option>`,
+        `<option value="CITY">All Tumakuru City Buses</option>`,
+        `<option value="BLR">All Buses to Bengaluru</option>`,
+        `<option value="BLR_AC">All AC Buses to Bengaluru</option>`,
+        ...ROUTES.map(
+          (r) => `<option value="${r.id}">Route ${r.id}${r.isAC ? " [AC]" : ""} — ${r.name}</option>`
+        )
+      ].join("");
+    }
 
     const stopSel = document.getElementById("alertStopSelect");
     populateStopDropdown(stopSel, "— Or pick a Tumakuru / BLR stop as your location —");
-
-    stopSel.addEventListener("change", () => {
-      const stop = getStopById(stopSel.value);
-      if (stop) setUserAlertLocation(stop.coord, formatStopText(stop));
-    });
+    if (stopSel) {
+      stopSel.addEventListener("change", () => {
+        const stop = getStopById(stopSel.value);
+        if (stop) setUserAlertLocation(stop.coord, formatStopText(stop));
+      });
+    }
   }
 
   function setUserAlertLocation(coord, label) {
     alertConfig.coord = coord;
     alertConfig.locLabel = label;
-    document.getElementById("alertLocStatus").textContent =
-      `Location set: ${label} (${coord[1].toFixed(4)}, ${coord[0].toFixed(4)})`;
-
-    if (!userAlertMarker) {
-      const el = document.createElement("div");
-      el.className = "user-alert-pin";
-      el.title = "Your Pass-By Alert Location";
-      userAlertMarker = new maplibregl.Marker({ element: el })
-        .setLngLat(coord)
-        .addTo(map);
-    } else {
-      userAlertMarker.setLngLat(coord);
+    const statusEl = document.getElementById("alertLocStatus");
+    if (statusEl) {
+      statusEl.textContent = `Location set: ${label} (${coord[1].toFixed(4)}, ${coord[0].toFixed(4)})`;
     }
 
-    updateAlertZoneLayer();
+    if (map) {
+      if (!userAlertMarker) {
+        const el = document.createElement("div");
+        el.className = "user-alert-pin";
+        el.title = "Your Pass-By Alert Location";
+        userAlertMarker = new maplibregl.Marker({ element: el })
+          .setLngLat(coord)
+          .addTo(map);
+      } else {
+        userAlertMarker.setLngLat(coord);
+      }
+      updateAlertZoneLayer();
+    }
   }
 
   function playAlertChime() {
@@ -669,7 +694,7 @@
         osc.stop(now + idx * 0.16 + 0.3);
       });
     } catch {
-      // Ignore audio block errors
+      // Ignore audio restrictions
     }
   }
 
@@ -721,15 +746,17 @@
     });
 
     const chipText = document.getElementById("activeAlertChipText");
-    if (nearestBus) {
-      const distStr =
-        nearestDist < 1000
-          ? `${Math.round(nearestDist)} m`
-          : `${(nearestDist / 1000).toFixed(1)} km`;
-      chipText.textContent =
-        `Alert: ${formatFleetKeyLabel(alertConfig.fleetKey)} · Nearest ${nearestBus.routeId} (${distStr})`;
-    } else {
-      chipText.textContent = `Alert: ${formatFleetKeyLabel(alertConfig.fleetKey)} · Scanning...`;
+    if (chipText) {
+      if (nearestBus) {
+        const distStr =
+          nearestDist < 1000
+            ? `${Math.round(nearestDist)} m`
+            : `${(nearestDist / 1000).toFixed(1)} km`;
+        chipText.textContent =
+          `Alert: ${formatFleetKeyLabel(alertConfig.fleetKey)} · Nearest ${nearestBus.routeId} (${distStr})`;
+      } else {
+        chipText.textContent = `Alert: ${formatFleetKeyLabel(alertConfig.fleetKey)} · Scanning...`;
+      }
     }
   }
 
@@ -753,7 +780,7 @@
 
   function armPassByAlert() {
     if (!alertConfig.coord) {
-      const ksrtc = getStopById("ksrtc");
+      const ksrtc = getStopById("ksrtc") || STOPS[0];
       setUserAlertLocation(ksrtc.coord, formatStopText(ksrtc));
     }
 
@@ -776,10 +803,13 @@
 
     document.getElementById("alertModal").classList.add("hidden");
     document.getElementById("activeAlertChip").classList.remove("hidden");
-    document.getElementById("btnOpenAlertModal").classList.add("armed");
-    document.getElementById("btnOpenAlertModal").textContent = "Alert: ON";
+    const btn = document.getElementById("btnOpenAlertModal");
+    btn.classList.add("armed");
+    btn.textContent = "Alert: ON";
     updateAlertZoneLayer();
-    map.flyTo({ center: alertConfig.coord, zoom: Math.max(map.getZoom(), 14.2), pitch: 0, bearing: 0, duration: 750 });
+    if (map) {
+      map.flyTo({ center: alertConfig.coord, zoom: Math.max(map.getZoom(), 14.2), pitch: 0, bearing: 0, duration: 750 });
+    }
     showToast(`Alert active for ${formatFleetKeyLabel(alertConfig.fleetKey)} near ${alertConfig.locLabel}.`);
   }
 
@@ -787,8 +817,9 @@
     alertConfig.active = false;
     document.getElementById("activeAlertChip").classList.add("hidden");
     document.getElementById("passAlertBanner").classList.add("hidden");
-    document.getElementById("btnOpenAlertModal").classList.remove("armed");
-    document.getElementById("btnOpenAlertModal").textContent = "Pass-By Alert";
+    const btn = document.getElementById("btnOpenAlertModal");
+    btn.classList.remove("armed");
+    btn.textContent = "Pass-By Alert";
     if (userAlertMarker) {
       userAlertMarker.remove();
       userAlertMarker = null;
@@ -801,6 +832,7 @@
   // --- UI List Rendering ---
   function renderRoutePills() {
     const wrap = document.getElementById("routeFilterPills");
+    if (!wrap) return;
     const acCount = fleet.filter((b) => b.isAC).length;
     const blrCount = fleet.filter((b) => b.category === "bangalore").length;
     const cityCount = fleet.filter((b) => b.category === "city").length;
@@ -829,9 +861,10 @@
         applyRouteLayerFilter();
         renderFleetList();
         if (
-          selectedRouteFilter === "BLR" ||
-          selectedRouteFilter === "BLR_AC" ||
-          selectedRouteFilter.startsWith("BLR-")
+          map &&
+          (selectedRouteFilter === "BLR" ||
+            selectedRouteFilter === "BLR_AC" ||
+            selectedRouteFilter.startsWith("BLR-"))
         ) {
           map.flyTo({ ...LANDMARKS.corridor, pitch: 0, bearing: 0, duration: 900 });
         }
@@ -840,8 +873,12 @@
   }
 
   function renderFleetList() {
-    const query = document.getElementById("fleetSearch").value.trim().toLowerCase();
+    const searchEl = document.getElementById("fleetSearch");
     const list = document.getElementById("fleetList");
+    if (!list) return;
+
+    const prevScroll = list.scrollTop;
+    const query = searchEl ? searchEl.value.trim().toLowerCase() : "";
     const now = performance.now();
 
     const visible = getVisibleFleet().filter((b) => {
@@ -881,6 +918,8 @@
       })
       .join("");
 
+    list.scrollTop = prevScroll;
+
     list.querySelectorAll(".bus-card").forEach((card) => {
       card.addEventListener("click", () => selectBus(card.dataset.id, true));
     });
@@ -888,6 +927,7 @@
 
   function renderRoutesTab() {
     const container = document.getElementById("routesList");
+    if (!container) return;
     container.innerHTML = ROUTES.map((r) => {
       const activeCount = fleet.filter((b) => b.routeId === r.id).length;
       return `
@@ -916,10 +956,12 @@
         applyRouteLayerFilter();
         switchTab("fleet");
         renderFleetList();
-        if (selectedRouteFilter.startsWith("BLR-")) {
-          map.flyTo({ ...LANDMARKS.corridor, pitch: 0, bearing: 0, duration: 900 });
-        } else {
-          map.flyTo({ ...LANDMARKS.tumkur, pitch: 0, bearing: 0, duration: 900 });
+        if (map) {
+          if (selectedRouteFilter.startsWith("BLR-")) {
+            map.flyTo({ ...LANDMARKS.corridor, pitch: 0, bearing: 0, duration: 900 });
+          } else {
+            map.flyTo({ ...LANDMARKS.tumkur, pitch: 0, bearing: 0, duration: 900 });
+          }
         }
       });
     });
@@ -928,7 +970,7 @@
   function initStopBoardAndFares() {
     const stopSel = document.getElementById("stopSelect");
     populateStopDropdown(stopSel, null, "ksrtc");
-    stopSel.addEventListener("change", renderArrivalBoard);
+    if (stopSel) stopSel.addEventListener("change", renderArrivalBoard);
 
     const fareFrom = document.getElementById("fareFromSelect");
     const fareTo = document.getElementById("fareToSelect");
@@ -936,18 +978,20 @@
     populateStopDropdown(fareFrom, null, "ksrtc");
     populateStopDropdown(fareTo, null, "majestic");
 
-    fareFrom.addEventListener("change", renderFareEstimator);
-    fareTo.addEventListener("change", renderFareEstimator);
-    farePass.addEventListener("change", renderFareEstimator);
+    if (fareFrom) fareFrom.addEventListener("change", renderFareEstimator);
+    if (fareTo) fareTo.addEventListener("change", renderFareEstimator);
+    if (farePass) farePass.addEventListener("change", renderFareEstimator);
 
-    document.getElementById("btnSwapFareStops").addEventListener("click", () => {
+    on("btnSwapFareStops", "click", () => {
+      if (!fareFrom || !fareTo) return;
       const tmp = fareFrom.value;
       fareFrom.value = fareTo.value;
       fareTo.value = tmp;
       renderFareEstimator();
     });
 
-    document.getElementById("btnCheckFareFromStop").addEventListener("click", () => {
+    on("btnCheckFareFromStop", "click", () => {
+      if (!stopSel || !fareFrom || !fareTo) return;
       const currentStopId = stopSel.value;
       fareFrom.value = currentStopId;
       if (fareTo.value === currentStopId) {
@@ -958,18 +1002,22 @@
     });
 
     const gpsSelect = document.getElementById("gpsRouteSelect");
-    gpsSelect.innerHTML = ROUTES.map(
-      (r) => `<option value="${r.id}">${r.id}${r.isAC ? " [AC]" : ""} — ${r.name}</option>`
-    ).join("");
+    if (gpsSelect) {
+      gpsSelect.innerHTML = ROUTES.map(
+        (r) => `<option value="${r.id}">${r.id}${r.isAC ? " [AC]" : ""} — ${r.name}</option>`
+      ).join("");
+    }
 
     renderArrivalBoard();
     renderFareEstimator();
   }
 
   function renderArrivalBoard() {
-    const stopId = document.getElementById("stopSelect").value;
-    const stop = getStopById(stopId) || STOPS[0];
+    const stopSel = document.getElementById("stopSelect");
     const board = document.getElementById("arrivalBoard");
+    if (!stopSel || !board) return;
+
+    const stop = getStopById(stopSel.value) || STOPS[0];
 
     const arrivals = fleet
       .map((bus) => {
@@ -1010,6 +1058,7 @@
 
   function showToast(msg) {
     const t = document.getElementById("toast");
+    if (!t) return;
     t.textContent = msg;
     t.classList.remove("hidden");
     clearTimeout(t._timer);
@@ -1017,51 +1066,40 @@
   }
 
   function updateFleetCounters(suffix = "Auto-updating live") {
-    document.getElementById("tabBtnFleet").textContent = `Fleet (${fleet.length})`;
-    document.getElementById("feedStatusText").textContent = `${fleet.length} Buses Active · ${suffix}`;
+    const tabBtn = document.getElementById("tabBtnFleet");
+    if (tabBtn) tabBtn.textContent = `Fleet (${fleet.length})`;
+    const status = document.getElementById("feedStatusText");
+    if (status) status.textContent = `${fleet.length} Buses Active · ${suffix}`;
   }
 
-  // Auto-Dispatch Engine (New buses appear on map as they go live)
-  setInterval(() => {
-    if (isExternalApiMode) return;
-    const newBus = spawnLiveBus();
-    fleet.unshift(newBus);
+  function updateFollowButton() {
+    const btn = document.getElementById("btnFollowBus");
+    if (!btn) return;
+    btn.classList.toggle("active-follow", followBusActive);
+    btn.textContent = followBusActive ? "Stop Following Bus" : "Follow Bus on Map";
+  }
 
-    if (fleet.length > 92) {
-      const retireIdx = fleet.findIndex(
-        (b) => b.id !== selectedBusId && !b.isExternal && b.id !== newBus.id
-      );
-      if (retireIdx > -1) fleet.splice(retireIdx, 1);
-    }
-
-    updateFleetCounters(`New bus ${newBus.routeId} (${newBus.reg}) just went live`);
-    renderRoutePills();
-    renderFleetList();
-    renderRoutesTab();
-    showToast(`Live Dispatch: ${newBus.routeId}${newBus.isAC ? " AC" : ""} (${newBus.reg}) departed terminal`);
-  }, 14000);
-
-  // --- UI Event Bindings ---
+  // --- Bind UI Controls ---
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
 
-  document.getElementById("drawerToggle").addEventListener("click", () => {
+  on("drawerToggle", "click", () => {
     document.getElementById("drawer").classList.toggle("collapsed");
   });
 
-  document.getElementById("fleetSearch").addEventListener("input", renderFleetList);
+  on("fleetSearch", "input", renderFleetList);
 
   document.querySelectorAll("[data-style]").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll("[data-style]").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       currentStyleName = btn.dataset.style;
-      map.setStyle(MAP_STYLES[currentStyleName]);
+      if (map) map.setStyle(MAP_STYLES[currentStyleName]);
     });
   });
 
-  document.getElementById("btnToggleStops").addEventListener("click", (e) => {
+  on("btnToggleStops", "click", (e) => {
     showStops = !showStops;
     e.target.classList.toggle("active", showStops);
     e.target.textContent = showStops ? "Stops: ON" : "Stops: OFF";
@@ -1069,8 +1107,7 @@
     syncStopMarkerHighlight(selectedBus ? selectedBus.routeId : null);
   });
 
-  // Toggle Kannada + English / Kannada Only / English Only stop names
-  document.getElementById("btnLangToggle").addEventListener("click", (e) => {
+  on("btnLangToggle", "click", (e) => {
     const order = ["both", "kn", "en"];
     stopLangMode = order[(order.indexOf(stopLangMode) + 1) % order.length];
     const labels = {
@@ -1084,7 +1121,7 @@
     showToast(`Bus stop language: ${labels[stopLangMode]}`);
   });
 
-  document.getElementById("btnScaleToggle").addEventListener("click", (e) => {
+  on("btnScaleToggle", "click", (e) => {
     boostScale = !boostScale;
     e.target.classList.toggle("active", boostScale);
     e.target.textContent = boostScale ? "Bus Size: Large" : "Bus Size: Compact";
@@ -1095,11 +1132,11 @@
       followBusActive = false;
       updateFollowButton();
       const target = LANDMARKS[btn.dataset.fly];
-      if (target) map.flyTo({ ...target, pitch: 0, bearing: 0, duration: 900 });
+      if (target && map) map.flyTo({ ...target, pitch: 0, bearing: 0, duration: 900 });
     });
   });
 
-  document.getElementById("btnNearestStop").addEventListener("click", () => {
+  on("btnNearestStop", "click", () => {
     if (!navigator.geolocation) return showToast("Geolocation not supported.");
     showToast("Finding nearest bus stop...");
     navigator.geolocation.getCurrentPosition(
@@ -1117,35 +1154,30 @@
         document.getElementById("stopSelect").value = nearest.id;
         renderArrivalBoard();
         switchTab("stops");
-        map.flyTo({ center: nearest.coord, zoom: 15.6, pitch: 0, bearing: 0, duration: 900 });
+        if (map) map.flyTo({ center: nearest.coord, zoom: 15.6, pitch: 0, bearing: 0, duration: 900 });
         showToast(`Nearest stop: ${formatStopText(nearest)} (${(bestDist / 1000).toFixed(1)} km)`);
       },
       () => showToast("Location permission denied.")
     );
   });
 
-  document.getElementById("btnCloseInspector").addEventListener("click", clearSelectedBus);
-  document.getElementById("btnClearSelectedRoute").addEventListener("click", clearSelectedBus);
+  on("btnCloseInspector", "click", clearSelectedBus);
+  on("btnClearSelectedRoute", "click", clearSelectedBus);
 
-  document.getElementById("btnLights").addEventListener("click", (e) => {
+  on("btnLights", "click", (e) => {
     const active = e.target.classList.toggle("active");
     e.target.textContent = active ? "Lights ON" : "Lights OFF";
-    inspector3D.setLights(active);
+    const insp = getInspector3D();
+    if (insp) insp.setLights(active);
   });
 
-  function updateFollowButton() {
-    const btn = document.getElementById("btnFollowBus");
-    btn.classList.toggle("active-follow", followBusActive);
-    btn.textContent = followBusActive ? "Stop Following Bus" : "Follow Bus on Map";
-  }
-
-  document.getElementById("btnFollowBus").addEventListener("click", () => {
+  on("btnFollowBus", "click", () => {
     followBusActive = !followBusActive;
     updateFollowButton();
     if (followBusActive) showToast("Following bus in 2D top view.");
   });
 
-  document.getElementById("btnAlertThisRoute").addEventListener("click", () => {
+  on("btnAlertThisRoute", "click", () => {
     const activeBus = fleet.find((b) => b.id === selectedBusId);
     if (activeBus) {
       document.getElementById("alertFleetSelect").value = activeBus.routeId;
@@ -1154,18 +1186,18 @@
   });
 
   // Pass-By Alert Modal Controls
-  const alertModal = document.getElementById("alertModal");
-  document.getElementById("btnOpenAlertModal").addEventListener("click", () => {
+  on("btnOpenAlertModal", "click", () => {
     if (!alertConfig.active && selectedRouteFilter) {
-      document.getElementById("alertFleetSelect").value = selectedRouteFilter;
+      const sel = document.getElementById("alertFleetSelect");
+      if (sel) sel.value = selectedRouteFilter;
     }
-    alertModal.classList.remove("hidden");
+    document.getElementById("alertModal").classList.remove("hidden");
   });
-  document.getElementById("btnCloseAlertModal").addEventListener("click", () => {
-    alertModal.classList.add("hidden");
+  on("btnCloseAlertModal", "click", () => {
+    document.getElementById("alertModal").classList.add("hidden");
   });
 
-  document.getElementById("btnAlertUseGps").addEventListener("click", () => {
+  on("btnAlertUseGps", "click", () => {
     if (!navigator.geolocation) return showToast("Geolocation unavailable.");
     showToast("Reading your GPS location...");
     navigator.geolocation.getCurrentPosition(
@@ -1177,22 +1209,22 @@
     );
   });
 
-  document.getElementById("btnAlertPickMap").addEventListener("click", () => {
+  on("btnAlertPickMap", "click", () => {
     pickingAlertOnMap = true;
     mapEl.classList.add("picking-location");
-    alertModal.classList.add("hidden");
+    document.getElementById("alertModal").classList.add("hidden");
     showToast("Click anywhere on the map (or a bus stop) to set your alert location.");
   });
 
-  document.getElementById("btnArmAlert").addEventListener("click", armPassByAlert);
-  document.getElementById("btnDisableAlert").addEventListener("click", disablePassByAlert);
-  document.getElementById("btnStopAlertQuick").addEventListener("click", disablePassByAlert);
+  on("btnArmAlert", "click", armPassByAlert);
+  on("btnDisableAlert", "click", disablePassByAlert);
+  on("btnStopAlertQuick", "click", disablePassByAlert);
 
-  document.getElementById("btnDismissPassAlert").addEventListener("click", () => {
+  on("btnDismissPassAlert", "click", () => {
     document.getElementById("passAlertBanner").classList.add("hidden");
   });
 
-  document.getElementById("btnLocateAlertBus").addEventListener("click", () => {
+  on("btnLocateAlertBus", "click", () => {
     if (lastAlertBusId) {
       selectBus(lastAlertBusId, true);
       document.getElementById("passAlertBanner").classList.add("hidden");
@@ -1200,15 +1232,14 @@
   });
 
   // Live Feed / GPS Modal
-  const feedModal = document.getElementById("feedModal");
-  document.getElementById("btnOpenFeedModal").addEventListener("click", () => {
-    feedModal.classList.remove("hidden");
+  on("btnOpenFeedModal", "click", () => {
+    document.getElementById("feedModal").classList.remove("hidden");
   });
-  document.getElementById("btnCloseFeedModal").addEventListener("click", () => {
-    feedModal.classList.add("hidden");
+  on("btnCloseFeedModal", "click", () => {
+    document.getElementById("feedModal").classList.add("hidden");
   });
 
-  document.getElementById("btnConnectApi").addEventListener("click", async () => {
+  on("btnConnectApi", "click", async () => {
     const url = document.getElementById("apiUrlInput").value.trim();
     if (!url) return showToast("Enter a valid JSON endpoint URL.");
     clearInterval(apiPollTimer);
@@ -1269,10 +1300,10 @@
 
     await poll();
     apiPollTimer = setInterval(poll, 3000);
-    feedModal.classList.add("hidden");
+    document.getElementById("feedModal").classList.add("hidden");
   });
 
-  document.getElementById("btnToggleGps").addEventListener("click", (e) => {
+  on("btnToggleGps", "click", (e) => {
     if (gpsWatchId !== null) {
       navigator.geolocation.clearWatch(gpsWatchId);
       gpsWatchId = null;
@@ -1327,11 +1358,11 @@
     );
 
     e.target.textContent = "Stop GPS";
-    feedModal.classList.add("hidden");
+    document.getElementById("feedModal").classList.add("hidden");
     showToast("Broadcasting your device GPS as a 3D bus.");
   });
 
-  document.getElementById("btnResetSim").addEventListener("click", () => {
+  on("btnResetSim", "click", () => {
     clearInterval(apiPollTimer);
     isExternalApiMode = false;
     if (gpsWatchId !== null) {
@@ -1345,11 +1376,104 @@
     renderFleetList();
     renderRoutesTab();
     renderArrivalBoard();
-    feedModal.classList.add("hidden");
+    document.getElementById("feedModal").classList.add("hidden");
     showToast("Switched back to auto-updating fleet.");
   });
 
-  // Main Animation & Alert Loop
+  // =========================================================================
+  // 1. BOOT FLEET UI IMMEDIATELY (Independent of Map / WebGL!)
+  // =========================================================================
+  updateFleetCounters("Auto-updating live...");
+  initAlertModalOptions();
+  renderRoutePills();
+  renderFleetList();
+  renderRoutesTab();
+  initStopBoardAndFares();
+
+  // =========================================================================
+  // 2. INITIALIZE MAP & 3D LAYER SAFELY
+  // =========================================================================
+  if (typeof maplibregl === "undefined") {
+    showStatusError("MapLibre library failed to load (check internet connection or CDN block). Fleet list is still active.");
+  } else {
+    try {
+      map = new maplibregl.Map({
+        container: "map",
+        style: MAP_STYLES.street,
+        center: TUMKUR_CENTER,
+        zoom: 13.5,
+        pitch: 0,
+        maxPitch: 0,
+        bearing: 0,
+        dragRotate: false,
+        pitchWithRotate: false,
+        touchPitch: false,
+        antialias: true
+      });
+
+      map.touchZoomRotate.disableRotation();
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+      map.on("style.load", attachMapLayers);
+      map.on("zoom", syncStopLabelZoomClass);
+      syncStopLabelZoomClass();
+
+      map.on("click", (e) => {
+        if (pickingAlertOnMap) {
+          pickingAlertOnMap = false;
+          mapEl.classList.remove("picking-location");
+          setUserAlertLocation([e.lngLat.lng, e.lngLat.lat], "Pinned Map Location");
+          document.getElementById("alertModal").classList.remove("hidden");
+          showToast("Alert location pinned on map.");
+          return;
+        }
+
+        const visible = getVisibleFleet();
+        let closestBus = null;
+        let bestPx = 30;
+        visible.forEach((bus) => {
+          const pt = map.project([bus.lng, bus.lat]);
+          const d = Math.hypot(pt.x - e.point.x, pt.y - e.point.y);
+          if (d < bestPx) {
+            bestPx = d;
+            closestBus = bus;
+          }
+        });
+
+        if (closestBus) selectBus(closestBus.id, false);
+      });
+
+      initStopMarkers();
+      syncBusMarkers();
+    } catch (err) {
+      console.error("Map init error:", err);
+      showStatusError(`Map WebGL error: ${err.message}`);
+    }
+  }
+
+  // =========================================================================
+  // 3. AUTO-DISPATCH & MAIN ANIMATION LOOP
+  // =========================================================================
+  if (typeof spawnLiveBus === "function") {
+    setInterval(() => {
+      if (isExternalApiMode) return;
+      const newBus = spawnLiveBus();
+      fleet.unshift(newBus);
+
+      if (fleet.length > 92) {
+        const retireIdx = fleet.findIndex(
+          (b) => b.id !== selectedBusId && !b.isExternal && b.id !== newBus.id
+        );
+        if (retireIdx > -1) fleet.splice(retireIdx, 1);
+      }
+
+      updateFleetCounters(`New bus ${newBus.routeId} (${newBus.reg}) just went live`);
+      renderRoutePills();
+      renderFleetList();
+      renderRoutesTab();
+      showToast(`Live Dispatch: ${newBus.routeId}${newBus.isAC ? " AC" : ""} (${newBus.reg}) departed terminal`);
+    }, 14000);
+  }
+
   let lastTime = performance.now();
   let uiTick = 0;
 
@@ -1364,7 +1488,7 @@
     if (selectedBusId) {
       const activeBus = fleet.find((b) => b.id === selectedBusId);
       if (activeBus) {
-        if (followBusActive) {
+        if (followBusActive && map) {
           map.easeTo({
             center: [activeBus.lng, activeBus.lat],
             pitch: 0,
@@ -1387,26 +1511,21 @@
     }
   }
 
-  // Boot
-  initStopMarkers();
-  initAlertModalOptions();
-  renderRoutePills();
-  renderFleetList();
-  renderRoutesTab();
-  initStopBoardAndFares();
   requestAnimationFrame(loop);
 
-  snapRoutesToRealRoads((route, done, total) => {
-    updateRouteSourceData();
-    renderFareEstimator();
-    updateFleetCounters(
-      done < total
-        ? `Aligning roads (${done}/${total})...`
-        : "Auto-updating live (Tumakuru & Bengaluru)"
-    );
-  }).then((snapped) => {
-    if (snapped === 0) {
-      updateFleetCounters("Auto-updating live (Offline Fallback)");
-    }
-  });
+  if (typeof snapRoutesToRealRoads === "function") {
+    snapRoutesToRealRoads((route, done, total) => {
+      updateRouteSourceData();
+      renderFareEstimator();
+      updateFleetCounters(
+        done < total
+          ? `Aligning roads (${done}/${total})...`
+          : "Auto-updating live (Tumakuru & Bengaluru)"
+      );
+    }).then((snapped) => {
+      if (snapped === 0) {
+        updateFleetCounters("Auto-updating live (Offline Fallback)");
+      }
+    });
+  }
 })();
