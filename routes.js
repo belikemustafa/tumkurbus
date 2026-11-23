@@ -12,6 +12,61 @@ window.TumkurData = (() => {
     airport: { center: [77.7066, 13.1986], zoom: 13.2 }
   };
 
+  // Kannada translations for all Tumakuru & Bengaluru corridor bus stops
+  const STOP_KANNADA = {
+    heggere: "ಹೆಗ್ಗೆರೆ / ಎಸ್‌ಎಸ್‌ಎಂಸಿ",
+    gubbi: "ಗುಬ್ಬಿ ಗೇಟ್",
+    townhall: "ಟೌನ್ ಹಾಲ್ ವೃತ್ತ",
+    ksrtc: "ತುಮಕೂರು ಕೆಎಸ್‌ಆರ್‌ಟಿಸಿ ನಿಲ್ದಾಣ",
+    univ: "ತುಮಕೂರು ವಿಶ್ವವಿದ್ಯಾಲಯ",
+    sit: "ಎಸ್‌ಐಟಿ ಮುಖ್ಯ ದ್ವಾರ",
+    batawadi: "ಬಟವಾಡಿ ಬೈಪಾಸ್",
+    kyathsandra: "ಕ್ಯಾತ್ಸಂದ್ರ ವೃತ್ತ",
+    mutt: "ಸಿದ್ಧಗಂಗಾ ಮಠ",
+    shettihalli: "ಶೆಟ್ಟಿಹಳ್ಳಿ ಗೇಟ್",
+    sspuram: "ಎಸ್‌ಎಸ್ ಪುರಂ ಮುಖ್ಯ ರಸ್ತೆ",
+    siragate: "ಶಿರಾ ಗೇಟ್",
+    anthara: "ಅಂತರಸನಹಳ್ಳಿ",
+    maralur: "ಮರಳೂರು ದಿಣ್ಣೆ",
+    oorukere: "ಊರುಕೆರೆ (ಎನ್‌ಎಚ್-48)",
+    upparahalli: "ಉಪ್ಪಾರಹಳ್ಳಿ",
+    jayanagar: "ಜಯನಗರ ರಿಂಗ್ ರಸ್ತೆ",
+    sitback: "ಎಸ್‌ಐಟಿ ಹಿಂಬದಿ ದ್ವಾರ",
+    devaraya: "ದೇವರಾಯಪಟ್ಟಣ",
+    gangasandra: "ಗಂಗಸಂದ್ರ",
+    belagumba: "ಬೆಳಗುಂಬ",
+    bellavi: "ಬೆಳ್ಳಾವಿ ಕ್ರಾಸ್",
+    gulur: "ಗೂಳೂರು ವೃತ್ತ",
+    gubbitown: "ಗುಬ್ಬಿ ಬಸ್ ನಿಲ್ದಾಣ",
+    hebbur: "ಹೆಬ್ಬೂರು ಬಸ್ ನಿಲ್ದಾಣ",
+    hirehalli: "ಹಿರೇಹಳ್ಳಿ ಕೈಗಾರಿಕಾ ಪ್ರದೇಶ",
+    dobbaspet: "ದಾಬಸ್‌ಪೇಟೆ (ಎನ್‌ಎಚ್-48)",
+    nelamangala: "ನೆಲಮಂಗಲ ಬಸ್ ನಿಲ್ದಾಣ",
+    dasarahalli: "8ನೇ ಮೈಲಿ / ದಾಸರಹಳ್ಳಿ",
+    jalahalli: "ಜಾಲಹಳ್ಳಿ ಕ್ರಾಸ್",
+    goragunte: "ಗೊರಗುಂಟೆಪಾಳ್ಯ",
+    yeshwantpur: "ಯಶವಂತಪುರ ವೃತ್ತ",
+    majestic: "ಮೆಜೆಸ್ಟಿಕ್ ಕೆಬಿಎಸ್ (ಬೆಂಗಳೂರು)",
+    hebbal: "ಹೆಬ್ಬಾಳ ಫ್ಲೈಓವರ್",
+    krpuram: "ಕೆಆರ್ ಪುರಂ (ಬೆಂಗಳೂರು)",
+    shantinagar: "ಶಾಂತಿನಗರ ಬಸ್ ನಿಲ್ದಾಣ",
+    silkboard: "ಸಿಲ್ಕ್ ಬೋರ್ಡ್ ಜಂಕ್ಷನ್",
+    ecity: "ಎಲೆಕ್ಟ್ರಾನಿಕ್ ಸಿಟಿ ಹಂತ 1",
+    airport: "ಕೆಂಪೇಗೌಡ ವಿಮಾನ ನಿಲ್ದಾಣ (KIA)",
+    railway: "ತುಮಕೂರು ರೈಲ್ವೆ ನಿಲ್ದಾಣ",
+    ashoka: "ಅಶೋಕ ರಸ್ತೆ ನಿಲ್ದಾಣ",
+    dist_hosp: "ಜಿಲ್ಲಾ ಆಸ್ಪತ್ರೆ ನಿಲ್ದಾಣ",
+    mg_road: "ಎಂಜಿ ರಸ್ತೆ / ಚಿಕ್ಕಪೇಟೆ",
+    bh_road: "ಬಿ.ಎಚ್. ರಸ್ತೆ / ಅಮಾನಿಕೆರೆ",
+    siddaganga_ext: "ಸಿದ್ಧಗಂಗಾ ಬಡಾವಣೆ",
+    rk_ashram: "ರಾಮಕೃಷ್ಣ ಆಶ್ರಮ",
+    melekote: "ಮೇಳೆಕೋಟೆ ಕ್ರಾಸ್",
+    dibbur: "ದಿಬ್ಬೂರು ವೃತ್ತ",
+    yellapura: "ಯಲ್ಲಾಪುರ ಕ್ರಾಸ್",
+    ring_cross: "ರಿಂಗ್ ರಸ್ತೆ / ಬಟವಾಡಿ ಸೇತುವೆ",
+    honnenahalli: "ಹೊನ್ನೇನಹಳ್ಳಿ / ಬಡ್ಡಿಹಳ್ಳಿ"
+  };
+
   // 16 Routes (10 Tumakuru City/Suburban + 6 Bengaluru Corridors incl. 4 AC fleets)
   const ROUTES = [
     {
@@ -342,12 +397,13 @@ window.TumkurData = (() => {
     { id: "honnenahalli", name: "Honnenahalli / Baddihalli", coord: [77.1180, 13.3148], major: false, routeIds: ["205", "209"] }
   ];
 
-  // Collect all unique stops and map which routes serve each stop
+  // Collect all unique stops with Kannada labels + serving routes
   const stopMap = new Map();
   ROUTES.forEach((route) => {
     route.stops.forEach((s) => {
+      s.kn = STOP_KANNADA[s.id] || s.name;
       if (!stopMap.has(s.id)) {
-        stopMap.set(s.id, { ...s, routeIds: new Set([route.id]) });
+        stopMap.set(s.id, { ...s, kn: s.kn, routeIds: new Set([route.id]) });
       } else {
         const existing = stopMap.get(s.id);
         existing.routeIds.add(route.id);
@@ -357,8 +413,9 @@ window.TumkurData = (() => {
   });
 
   EXTRA_TUMKUR_STOPS.forEach((s) => {
+    const kn = STOP_KANNADA[s.id] || s.name;
     if (!stopMap.has(s.id)) {
-      stopMap.set(s.id, { ...s, routeIds: new Set(s.routeIds || []) });
+      stopMap.set(s.id, { ...s, kn, routeIds: new Set(s.routeIds || []) });
     }
   });
 
@@ -366,6 +423,12 @@ window.TumkurData = (() => {
     ...s,
     routeIds: Array.from(s.routeIds)
   }));
+
+  const STOPS_BY_ID = new Map(STOPS.map((s) => [s.id, s]));
+
+  function getStopById(id) {
+    return STOPS_BY_ID.get(id) || null;
+  }
 
   function haversineMeters(a, b) {
     const R = 6371000;
@@ -462,6 +525,231 @@ window.TumkurData = (() => {
     return snappedCount;
   }
 
+  function findNearestCumDist(route, coord) {
+    let bestIdx = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < route.path.length; i++) {
+      const d = haversineMeters(route.path[i], coord);
+      if (d < bestD) {
+        bestD = d;
+        bestIdx = i;
+      }
+    }
+    return route.cumDist[bestIdx] || 0;
+  }
+
+  /**
+   * KSRTC Ticket Fare Estimator between any two stops
+   * Calibrated to Karnataka's Nov 5, 2026 KSRTC fare revision:
+   * - City ordinary minimum ₹10, scaling by stage
+   * - Tumakuru ↔ Bengaluru KSRTC Express / Sarige ₹100 (~70 km)
+   * - Shakti Scheme (₹0 on Non-AC Ordinary/City/Sarige)
+   * - Senior Citizen (25% off Non-AC & Rajahamsa), Child (50% Non-AC / 75% Premium AC)
+   */
+  function estimateFares(fromId, toId, passengerType = "adult") {
+    const fromStop = getStopById(fromId);
+    const toStop = getStopById(toId);
+    if (!fromStop || !toStop || fromId === toId) {
+      return null;
+    }
+
+    // Find direct routes connecting both stops
+    const directRoutes = ROUTES.filter((r) => {
+      const hasFrom = r.stops.some((s) => s.id === fromId) || fromStop.routeIds.includes(r.id);
+      const hasTo = r.stops.some((s) => s.id === toId) || toStop.routeIds.includes(r.id);
+      return hasFrom && hasTo;
+    });
+
+    // Compute road distance (preferring snapped OSRM route distance if direct)
+    let distanceKm;
+    if (directRoutes.length > 0 && directRoutes[0].snapped) {
+      const r = directRoutes[0];
+      const d1 = findNearestCumDist(r, fromStop.coord);
+      const d2 = findNearestCumDist(r, toStop.coord);
+      distanceKm = Math.max(1.2, Math.abs(d2 - d1) / 1000);
+    } else {
+      const straightKm = haversineMeters(fromStop.coord, toStop.coord) / 1000;
+      const roadFactor = straightKm > 25 ? 1.12 : 1.24;
+      distanceKm = Math.max(1.2, straightKm * roadFactor);
+    }
+
+    const fromInTumkur = haversineMeters(fromStop.coord, TUMKUR_CENTER) < 16000;
+    const toInTumkur = haversineMeters(toStop.coord, TUMKUR_CENTER) < 16000;
+    const isLocalCityTrip = fromInTumkur && toInTumkur && distanceKm <= 18;
+    const involvesAirport = fromId === "airport" || toId === "airport";
+
+    function applyConcession(baseFare, { shaktiEligible, seniorEligible, childRate }) {
+      if (passengerType === "shakti") {
+        return shaktiEligible
+          ? { fare: 0, note: "FREE under Shakti Scheme (zero-value ticket)" }
+          : { fare: baseFare, note: "Shakti not applicable on AC / luxury service" };
+      }
+      if (passengerType === "senior") {
+        return seniorEligible
+          ? { fare: Math.max(5, Math.round(baseFare * 0.75)), note: "25% Karnataka Senior Citizen concession" }
+          : { fare: baseFare, note: "Senior concession applies to Rajahamsa & lower only" };
+      }
+      if (passengerType === "child") {
+        return {
+          fare: Math.max(5, Math.round(baseFare * childRate)),
+          note: `${Math.round(childRate * 100)}% child fare (6–12 yrs; under 6 free)`
+        };
+      }
+      return { fare: baseFare, note: "Standard adult fare" };
+    }
+
+    const tiers = [];
+
+    // 1. Tumakuru City Ordinary / EV Shuttle
+    if (isLocalCityTrip || directRoutes.some((r) => r.category === "city")) {
+      const stageSteps = Math.max(0, Math.ceil((distanceKm - 2.0) / 2.6));
+      const baseCity = Math.min(45, 10 + stageSteps * 5);
+      const adj = applyConcession(baseCity, {
+        shaktiEligible: true,
+        seniorEligible: true,
+        childRate: 0.5
+      });
+      tiers.push({
+        id: "city",
+        name: "Tumakuru City Ordinary / EV",
+        subtitle: "Stage-based city service (Non-AC)",
+        isAC: false,
+        baseFare: baseCity,
+        fare: adj.fare,
+        note: adj.note,
+        durationMin: Math.max(6, Math.round((distanceKm / 22) * 60)),
+        routeIds: directRoutes.filter((r) => r.category === "city").map((r) => r.id)
+      });
+    }
+
+    // 2. Intercity & Highway Tiers (shown for trips > 7 km or any Bengaluru corridor route)
+    if (!isLocalCityTrip || directRoutes.some((r) => r.category === "bangalore")) {
+      // KSRTC Karnataka Sarige Express (Calibrated: 70 km -> ₹100)
+      const baseSarige = Math.max(15, Math.round(12 + distanceKm * 1.26));
+      const adjSarige = applyConcession(baseSarige, {
+        shaktiEligible: true,
+        seniorEligible: true,
+        childRate: 0.5
+      });
+      tiers.push({
+        id: "sarige",
+        name: "KSRTC Sarige (Express)",
+        subtitle: "3+2 Non-AC Seater · High Frequency",
+        isAC: false,
+        baseFare: baseSarige,
+        fare: adjSarige.fare,
+        note: adjSarige.note,
+        durationMin: Math.max(12, Math.round((distanceKm / 42) * 60)),
+        routeIds: directRoutes.filter((r) => r.id === "BLR-SRG").map((r) => r.id)
+      });
+
+      // Rajahamsa Executive
+      const baseRajahamsa = Math.max(45, Math.round(20 + distanceKm * 1.85));
+      const adjRajahamsa = applyConcession(baseRajahamsa, {
+        shaktiEligible: false,
+        seniorEligible: true,
+        childRate: 0.5
+      });
+      tiers.push({
+        id: "rajahamsa",
+        name: "Rajahamsa Executive",
+        subtitle: "2+2 Pushback Non-AC Deluxe",
+        isAC: false,
+        baseFare: baseRajahamsa,
+        fare: adjRajahamsa.fare,
+        note: adjRajahamsa.note,
+        durationMin: Math.max(12, Math.round((distanceKm / 46) * 60)),
+        routeIds: directRoutes.filter((r) => r.id === "BLR-RJ").map((r) => r.id)
+      });
+
+      // EV Power Plus AC
+      const baseEvAc = Math.max(60, Math.round(25 + distanceKm * 2.15));
+      const adjEvAc = applyConcession(baseEvAc, {
+        shaktiEligible: false,
+        seniorEligible: false,
+        childRate: 0.75
+      });
+      tiers.push({
+        id: "evac",
+        name: "KSRTC EV Power Plus AC",
+        subtitle: "2+2 Electric AC Coach",
+        isAC: true,
+        baseFare: baseEvAc,
+        fare: adjEvAc.fare,
+        note: adjEvAc.note,
+        durationMin: Math.max(12, Math.round((distanceKm / 48) * 60)),
+        routeIds: directRoutes.filter((r) => r.id === "BLR-EV").map((r) => r.id)
+      });
+
+      // Airavat Club Class AC
+      const baseAiravat = Math.max(85, Math.round(35 + distanceKm * 2.65));
+      const adjAiravat = applyConcession(baseAiravat, {
+        shaktiEligible: false,
+        seniorEligible: false,
+        childRate: 0.75
+      });
+      tiers.push({
+        id: "airavat",
+        name: "Airavat Club Class AC",
+        subtitle: "Volvo Multi-Axle AC Semi-Sleeper",
+        isAC: true,
+        baseFare: baseAiravat,
+        fare: adjAiravat.fare,
+        note: adjAiravat.note,
+        durationMin: Math.max(12, Math.round((distanceKm / 52) * 60)),
+        routeIds: directRoutes.filter((r) => r.id === "BLR-AC1").map((r) => r.id)
+      });
+
+      // Ambaari Volvo AC Sleeper
+      const baseAmbaari = Math.max(130, Math.round(55 + distanceKm * 3.35));
+      const adjAmbaari = applyConcession(baseAmbaari, {
+        shaktiEligible: false,
+        seniorEligible: false,
+        childRate: 0.75
+      });
+      tiers.push({
+        id: "ambaari",
+        name: "Ambaari Volvo AC Sleeper",
+        subtitle: "2+1 AC Sleeper · Shantinagar / E-City",
+        isAC: true,
+        baseFare: baseAmbaari,
+        fare: adjAmbaari.fare,
+        note: adjAmbaari.note,
+        durationMin: Math.max(14, Math.round((distanceKm / 54) * 60)),
+        routeIds: directRoutes.filter((r) => r.id === "BLR-AMB").map((r) => r.id)
+      });
+
+      // FlyBus AC (when Airport KIA is selected or served)
+      if (involvesAirport || directRoutes.some((r) => r.id === "BLR-KIA")) {
+        const baseFlybus = Math.max(200, Math.round(70 + distanceKm * 4.05));
+        const adjFlybus = applyConcession(baseFlybus, {
+          shaktiEligible: false,
+          seniorEligible: false,
+          childRate: 0.75
+        });
+        tiers.push({
+          id: "flybus",
+          name: "FlyBus Multi-Axle AC (Airport)",
+          subtitle: "Direct KIA Terminal AC Coach",
+          isAC: true,
+          baseFare: baseFlybus,
+          fare: adjFlybus.fare,
+          note: adjFlybus.note,
+          durationMin: Math.max(25, Math.round((distanceKm / 55) * 60)),
+          routeIds: ["BLR-KIA"]
+        });
+      }
+    }
+
+    return {
+      fromStop,
+      toStop,
+      distanceKm: Number(distanceKm.toFixed(1)),
+      directRouteIds: directRoutes.map((r) => r.id),
+      tiers
+    };
+  }
+
   function sampleRouteAt(route, progress01, direction) {
     const clampedDist = Math.max(0, Math.min(route.totalDist, progress01 * route.totalDist));
 
@@ -521,6 +809,7 @@ window.TumkurData = (() => {
         const progress = (i + 0.3) / count;
         const pos = sampleRouteAt(route, progress, direction);
         const baseSpeed = route.baseSpeed + ((rIdx + i) % 3) * 4;
+        const nextStopObj = route.stops[direction > 0 ? route.stops.length - 1 : 0];
 
         fleet.push({
           id: `bus-${route.id}-${i + 1}`,
@@ -541,7 +830,8 @@ window.TumkurData = (() => {
           heading: pos.heading,
           braking: false,
           crowd: CROWD_LEVELS[(rIdx + i) % CROWD_LEVELS.length],
-          nextStopName: route.stops[direction > 0 ? route.stops.length - 1 : 0].name,
+          nextStopId: nextStopObj.id,
+          nextStopName: nextStopObj.name,
           etaMin: 4,
           isExternal: false,
           isNewUntil: 0
@@ -552,10 +842,6 @@ window.TumkurData = (() => {
     return fleet;
   }
 
-  /**
-   * Dynamically launches a new bus into live service from a route terminal
-   * so new buses appear automatically as they go live.
-   */
   function spawnLiveBus(preferredRouteId = null) {
     const route =
       ROUTES.find((r) => r.id === preferredRouteId) ||
@@ -563,6 +849,8 @@ window.TumkurData = (() => {
     const direction = Math.random() < 0.55 ? 1 : -1;
     const progress = direction === 1 ? 0.01 : 0.99;
     const pos = sampleRouteAt(route, progress, direction);
+    const nextStopObj =
+      route.stops[direction > 0 ? 1 : route.stops.length - 2] || route.stops[0];
 
     return {
       id: `live-dispatch-${route.id}-${liveSpawnSeq++}`,
@@ -583,7 +871,8 @@ window.TumkurData = (() => {
       heading: pos.heading,
       braking: false,
       crowd: "Low",
-      nextStopName: route.stops[direction > 0 ? 1 : route.stops.length - 2]?.name || route.stops[0].name,
+      nextStopId: nextStopObj.id,
+      nextStopName: nextStopObj.name,
       etaMin: 3,
       isExternal: false,
       isNewUntil: performance.now() + 9000
@@ -653,6 +942,7 @@ window.TumkurData = (() => {
           bestStop = s;
         }
       }
+      bus.nextStopId = bestStop.id;
       bus.nextStopName = bestStop.name;
       bus.etaMin = Math.max(1, Math.round(minDist / Math.max(4.5, speedMps) / 60));
     });
@@ -663,6 +953,8 @@ window.TumkurData = (() => {
     LANDMARKS,
     ROUTES,
     STOPS,
+    getStopById,
+    estimateFares,
     haversineMeters,
     bearingDegrees,
     snapRoutesToRealRoads,
