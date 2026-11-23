@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Namma Tumakuru & BLR — Live 3D Bus Map</title>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Kannada:wght@500;700&display=swap" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -31,6 +32,7 @@
       </div>
       <div class="btn-group" aria-label="Map Overlays">
         <button class="chip-btn active" id="btnToggleStops" title="Show or hide bus stops">Stops: ON</button>
+        <button class="chip-btn active" id="btnLangToggle" title="Switch stop language: Kannada + English / Kannada / English">EN + ಕನ್ನಡ</button>
         <button class="chip-btn active" id="btnScaleToggle" title="Toggle 3D bus size on map">Bus Size: Large</button>
       </div>
       <button class="alert-nav-btn" id="btnOpenAlertModal">Pass-By Alert</button>
@@ -83,9 +85,10 @@
     </div>
 
     <div class="drawer-tabs">
-      <button class="tab-btn active" data-tab="fleet" id="tabBtnFleet">Live Fleet (78)</button>
+      <button class="tab-btn active" data-tab="fleet" id="tabBtnFleet">Fleet (78)</button>
       <button class="tab-btn" data-tab="routes" id="tabBtnRoutes">Routes (16)</button>
-      <button class="tab-btn" data-tab="stops">Stop Board</button>
+      <button class="tab-btn" data-tab="stops">Stops</button>
+      <button class="tab-btn" data-tab="fares">Fares ₹</button>
     </div>
 
     <!-- Tab 1: Live Fleet -->
@@ -105,10 +108,44 @@
     <!-- Tab 3: Stop Arrival Board -->
     <section class="tab-panel" id="tab-stops">
       <div class="stop-selector">
-        <label for="stopSelect">Tumakuru / Bengaluru Bus Stop</label>
+        <div class="stop-selector-head">
+          <label for="stopSelect">Tumakuru / Bengaluru Bus Stop</label>
+          <button class="link-btn" id="btnCheckFareFromStop">Estimate Fare →</button>
+        </div>
         <select id="stopSelect"></select>
       </div>
       <div class="arrival-board" id="arrivalBoard"></div>
+    </section>
+
+    <!-- Tab 4: KSRTC Ticket Fare Estimator -->
+    <section class="tab-panel" id="tab-fares">
+      <div class="fare-form">
+        <div class="fare-row-wrap">
+          <div class="fare-field">
+            <label for="fareFromSelect">From Stop</label>
+            <select id="fareFromSelect"></select>
+          </div>
+          <button class="swap-btn" id="btnSwapFareStops" title="Swap stops">⇅</button>
+        </div>
+
+        <div class="fare-field">
+          <label for="fareToSelect">To Stop</label>
+          <select id="fareToSelect"></select>
+        </div>
+
+        <div class="fare-field">
+          <label for="farePassengerSelect">Passenger Category</label>
+          <select id="farePassengerSelect">
+            <option value="adult">Adult (Standard Fare)</option>
+            <option value="shakti">Women — Shakti Scheme (Free on Non-AC)</option>
+            <option value="senior">Senior Citizen 60+ (25% Off Non-AC / Rajahamsa)</option>
+            <option value="child">Child 6–12 yrs (50% Non-AC / 75% AC)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="fare-summary" id="fareSummary"></div>
+      <div class="list-scroll" id="fareResults"></div>
     </section>
   </aside>
 
