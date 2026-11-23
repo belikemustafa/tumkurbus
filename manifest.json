@@ -1,0 +1,17 @@
+{
+  "name": "Namma Tumakuru & BLR Live Bus Map",
+  "short_name": "Tumakuru Bus",
+  "description": "Live 3D bus tracking, KSRTC timetables, trip planner, fares, and drop-off alerts for Tumakuru and Bengaluru.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#eef2f6",
+  "theme_color": "#b91c1c",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
