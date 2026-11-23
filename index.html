@@ -19,7 +19,7 @@
         <h1>Namma Tumakuru <span>Live Bus Map</span></h1>
         <div class="live-status" id="feedStatus">
           <span class="pulse-dot"></span>
-          <span id="feedStatusText">36 Buses Active · Snapping routes to roads...</span>
+          <span id="feedStatusText">78 Buses Active · Auto-updating live...</span>
         </div>
       </div>
     </div>
@@ -27,16 +27,18 @@
     <div class="top-controls">
       <div class="btn-group" aria-label="Map Mode">
         <button class="chip-btn active" data-style="street">Street</button>
-        <button class="chip-btn" data-style="satellite">Satellite</button>
+        <button class="chip-btn" data-style="satellite">Satellite + Roads</button>
       </div>
-      <div class="btn-group" aria-label="Bus Scale">
-        <button class="chip-btn active" id="btnScaleToggle" title="Toggle 3D bus size on map">3D Bus Size: Boost</button>
+      <div class="btn-group" aria-label="Map Overlays">
+        <button class="chip-btn active" id="btnToggleStops" title="Show or hide bus stops">Stops: ON</button>
+        <button class="chip-btn active" id="btnScaleToggle" title="Toggle 3D bus size on map">Bus Size: Large</button>
       </div>
+      <button class="alert-nav-btn" id="btnOpenAlertModal">Pass-By Alert</button>
       <button class="accent-btn" id="btnOpenFeedModal">Live Feed / GPS</button>
     </div>
   </header>
 
-  <!-- Quick Jump Bar (Tumakuru & Bengaluru Corridor) -->
+  <!-- Quick Jump Bar -->
   <div class="landmark-bar">
     <button class="landmark-pill" data-fly="tumkur">Tumakuru City</button>
     <button class="landmark-pill" data-fly="ksrtc">KSRTC Stand</button>
@@ -45,7 +47,33 @@
     <button class="landmark-pill blr" data-fly="corridor">TMK ↔ BLR Highway</button>
     <button class="landmark-pill blr" data-fly="nelamangala">Nelamangala</button>
     <button class="landmark-pill blr" data-fly="majestic">Majestic (BLR)</button>
+    <button class="landmark-pill blr" data-fly="airport">BLR Airport (KIA)</button>
     <button class="landmark-pill accent" id="btnNearestStop">Nearest Stop</button>
+  </div>
+
+  <!-- Selected Bus Route Banner -->
+  <div class="selected-route-banner hidden" id="selectedRouteBanner">
+    <span id="selectedRouteText">Showing Route 201</span>
+    <button class="mini-banner-btn" id="btnClearSelectedRoute">Show All Routes</button>
+  </div>
+
+  <!-- Armed Alert Status Chip -->
+  <div class="active-alert-chip hidden" id="activeAlertChip">
+    <span class="alert-dot"></span>
+    <span id="activeAlertChipText">Watching fleet...</span>
+    <button class="chip-close-btn" id="btnStopAlertQuick" title="Disable alert">✕</button>
+  </div>
+
+  <!-- Approaching Bus Pass-By Alert Banner -->
+  <div class="pass-alert-banner hidden" id="passAlertBanner">
+    <div class="pass-alert-content">
+      <strong>Bus Approaching You</strong>
+      <span id="passAlertMsg">Route BLR-AC1 is 450m away</span>
+    </div>
+    <div class="pass-alert-actions">
+      <button class="mini-banner-btn primary" id="btnLocateAlertBus">Locate Bus</button>
+      <button class="mini-banner-btn" id="btnDismissPassAlert">Dismiss</button>
+    </div>
   </div>
 
   <!-- Left Side / Mobile Bottom Drawer -->
@@ -55,15 +83,15 @@
     </div>
 
     <div class="drawer-tabs">
-      <button class="tab-btn active" data-tab="fleet">Live Fleet (36)</button>
-      <button class="tab-btn" data-tab="routes">Routes (9)</button>
+      <button class="tab-btn active" data-tab="fleet" id="tabBtnFleet">Live Fleet (78)</button>
+      <button class="tab-btn" data-tab="routes" id="tabBtnRoutes">Routes (16)</button>
       <button class="tab-btn" data-tab="stops">Stop Board</button>
     </div>
 
     <!-- Tab 1: Live Fleet -->
     <section class="tab-panel active" id="tab-fleet">
       <div class="search-wrap">
-        <input type="text" id="fleetSearch" placeholder="Search route, KA-06/KA-01, or stop..." />
+        <input type="text" id="fleetSearch" placeholder="Search route, AC, KA-06/KA-01, or stop..." />
       </div>
       <div class="route-pills" id="routeFilterPills"></div>
       <div class="list-scroll" id="fleetList"></div>
@@ -87,8 +115,9 @@
   <!-- 3D Bus Inspector Floating Panel -->
   <section class="inspector hidden" id="busInspector">
     <div class="inspector-header">
-      <div>
+      <div class="inspector-title-group">
         <span class="route-tag" id="inspRouteTag">201</span>
+        <span class="ac-pill hidden" id="inspAcBadge">AC</span>
         <strong id="inspReg">KA-06-F-1041</strong>
       </div>
       <button class="icon-btn" id="btnCloseInspector" aria-label="Close">✕</button>
@@ -99,11 +128,14 @@
       <div class="turntable-hint">Drag to inspect 3D bus</div>
       <div class="turntable-controls">
         <button class="mini-btn active" id="btnLights">Lights ON</button>
-        <button class="mini-btn" id="btnWireframe">X-Ray</button>
       </div>
     </div>
 
     <div class="inspector-metrics">
+      <div class="metric">
+        <span>Service</span>
+        <strong id="inspService">KSRTC City</strong>
+      </div>
       <div class="metric">
         <span>Speed</span>
         <strong id="inspSpeed">34 km/h</strong>
@@ -113,19 +145,58 @@
         <strong id="inspNextStop">SIT Main Gate</strong>
       </div>
       <div class="metric">
-        <span>ETA</span>
-        <strong id="inspEta">3 min</strong>
-      </div>
-      <div class="metric">
-        <span>Crowd</span>
-        <strong id="inspCrowd">Moderate</strong>
+        <span>ETA · Crowd</span>
+        <strong id="inspEtaCrowd">3 min · Moderate</strong>
       </div>
     </div>
 
     <div class="inspector-actions">
       <button class="accent-btn full" id="btnFollowBus">Follow Bus on Map</button>
+      <button class="alert-nav-btn full" id="btnAlertThisRoute">Alert When This Route Passes Me</button>
     </div>
   </section>
+
+  <!-- Pass-By Alert Setup Modal -->
+  <div class="modal-backdrop hidden" id="alertModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Pass-By Bus Alert</h2>
+        <button class="icon-btn" id="btnCloseAlertModal">✕</button>
+      </div>
+
+      <div class="modal-section">
+        <h3>1. Select Bus Fleet to Watch</h3>
+        <select id="alertFleetSelect" class="full-input"></select>
+      </div>
+
+      <div class="modal-section">
+        <h3>2. Set Your Location</h3>
+        <p class="muted" id="alertLocStatus">No location set yet. Use GPS, choose a stop, or click on the map.</p>
+        <div class="loc-btn-row">
+          <button class="accent-btn" id="btnAlertUseGps">Use My GPS</button>
+          <button class="chip-btn border-btn" id="btnAlertPickMap">Click on Map</button>
+        </div>
+        <div style="margin-top:8px;">
+          <select id="alertStopSelect" class="full-input"></select>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <h3>3. Alert Distance</h3>
+        <select id="alertRadiusSelect" class="full-input">
+          <option value="500">Within 500 m (~1–2 min away)</option>
+          <option value="1000" selected>Within 1 km (~2–4 min away)</option>
+          <option value="2000">Within 2 km (~5–7 min away)</option>
+          <option value="5000">Within 5 km (Highway early notice)</option>
+        </select>
+      </div>
+
+      <div class="modal-footer split">
+        <button class="chip-btn" id="btnDisableAlert">Disable Alert</button>
+        <button class="alert-nav-btn" id="btnArmAlert">Activate Pass-By Alert</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Live Feed / Driver GPS Modal -->
   <div class="modal-backdrop hidden" id="feedModal">
@@ -136,9 +207,10 @@
       </div>
 
       <div class="modal-section">
-        <h3>1. Poll Custom Live JSON Endpoint</h3>
+        <h3>1. Auto-Poll Live JSON Endpoint (Every 3s)</h3>
         <p class="muted">
-          Expects an array of objects: <code>[{"id","routeId","reg","lat","lng","speed","heading"}]</code>
+          New bus IDs appear on the map automatically. Format:
+          <code>[{"id","routeId","reg","lat","lng","speed","heading","isAC"}]</code>
         </p>
         <div class="inline-form">
           <input type="url" id="apiUrlInput" placeholder="https://your-server.com/tumkur-buses.json" />
@@ -148,7 +220,7 @@
 
       <div class="modal-section">
         <h3>2. Broadcast Your Device GPS as a 3D Bus</h3>
-        <p class="muted">Shows your live position on the 2D map as a moving 3D bus using browser Geolocation.</p>
+        <p class="muted">Publishes your device location onto the Tumakuru map as a live 3D bus.</p>
         <div class="inline-form">
           <select id="gpsRouteSelect"></select>
           <button class="accent-btn" id="btnToggleGps">Start GPS</button>
@@ -156,7 +228,7 @@
       </div>
 
       <div class="modal-footer">
-        <button class="chip-btn" id="btnResetSim">Back to Simulated Fleet</button>
+        <button class="chip-btn" id="btnResetSim">Back to Auto-Updating Fleet</button>
       </div>
     </div>
   </div>
