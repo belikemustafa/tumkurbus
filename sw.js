@@ -1,11 +1,11 @@
-const CACHE_NAME = "tumkur-bus-pwa-v13";
+const CACHE_NAME = "tumkur-bus-pwa-v14";
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=13",
-  "./routes.js?v=13",
-  "./features.js?v=13",
-  "./app.js?v=13",
+  "./style.css?v=14",
+  "./routes.js?v=14",
+  "./features.js?v=14",
+  "./app.js?v=14",
   "./manifest.json",
   "./icon.svg"
 ];
