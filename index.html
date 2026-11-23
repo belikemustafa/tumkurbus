@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Namma Tumakuru 3D — Live Bus Tracker</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Fullscreen 3D Map -->
+  <div id="map"></div>
+
+  <!-- Top Header Bar -->
+  <header class="top-bar">
+    <div class="brand">
+      <div class="brand-badge">KA-06</div>
+      <div>
+        <h1>Namma Tumakuru <span>3D Live</span></h1>
+        <div class="live-status" id="feedStatus">
+          <span class="pulse-dot"></span>
+          <span id="feedStatusText">14 Buses Active · Simulated Telemetry</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="top-controls">
+      <div class="btn-group" aria-label="Map Style">
+        <button class="chip-btn active" data-style="dark">Dark</button>
+        <button class="chip-btn" data-style="street">Street</button>
+        <button class="chip-btn" data-style="satellite">Satellite</button>
+      </div>
+      <div class="btn-group" aria-label="Camera Presets">
+        <button class="chip-btn" id="btn3DView">3D City</button>
+        <button class="chip-btn" id="btn2DView">2D Top</button>
+        <button class="chip-btn" id="btnScaleToggle" title="Toggle 3D bus visibility scale">3D Scale: Boost</button>
+      </div>
+      <button class="accent-btn" id="btnOpenFeedModal">Live Feed / GPS</button>
+    </div>
+  </header>
+
+  <!-- Quick Tumakuru Landmark Jump Bar -->
+  <div class="landmark-bar">
+    <button class="landmark-pill" data-fly="ksrtc">KSRTC Stand</button>
+    <button class="landmark-pill" data-fly="sit">SIT Gate</button>
+    <button class="landmark-pill" data-fly="mutt">Siddaganga Mutt</button>
+    <button class="landmark-pill" data-fly="sira">Sira Gate</button>
+    <button class="landmark-pill" data-fly="heggere">Heggere</button>
+    <button class="landmark-pill gold" id="btnNearestStop">Nearest Stop</button>
+  </div>
+
+  <!-- Left Side / Mobile Bottom Drawer -->
+  <aside class="drawer" id="drawer">
+    <div class="drawer-handle" id="drawerToggle">
+      <span></span>
+    </div>
+
+    <div class="drawer-tabs">
+      <button class="tab-btn active" data-tab="fleet">Live Fleet</button>
+      <button class="tab-btn" data-tab="routes">Routes</button>
+      <button class="tab-btn" data-tab="stops">Stop Board</button>
+    </div>
+
+    <!-- Tab 1: Live Fleet -->
+    <section class="tab-panel active" id="tab-fleet">
+      <div class="search-wrap">
+        <input type="text" id="fleetSearch" placeholder="Search route, KA-06 reg, or stop..." />
+      </div>
+      <div class="route-pills" id="routeFilterPills"></div>
+      <div class="list-scroll" id="fleetList"></div>
+    </section>
+
+    <!-- Tab 2: Routes -->
+    <section class="tab-panel" id="tab-routes">
+      <div class="list-scroll" id="routesList"></div>
+    </section>
+
+    <!-- Tab 3: LED Stop Arrival Board -->
+    <section class="tab-panel" id="tab-stops">
+      <div class="stop-selector">
+        <label for="stopSelect">Tumakuru Bus Stop</label>
+        <select id="stopSelect"></select>
+      </div>
+      <div class="led-board" id="ledBoard"></div>
+    </section>
+  </aside>
+
+  <!-- 3D Bus Inspector Floating Panel -->
+  <section class="inspector hidden" id="busInspector">
+    <div class="inspector-header">
+      <div>
+        <span class="route-tag" id="inspRouteTag">201</span>
+        <strong id="inspReg">KA-06-F-1042</strong>
+      </div>
+      <button class="icon-btn" id="btnCloseInspector" aria-label="Close">✕</button>
+    </div>
+
+    <div class="turntable-wrap">
+      <canvas id="inspectorCanvas"></canvas>
+      <div class="turntable-hint">Drag to rotate 3D bus</div>
+      <div class="turntable-controls">
+        <button class="mini-btn active" id="btnLights">Lights ON</button>
+        <button class="mini-btn" id="btnWireframe">X-Ray</button>
+      </div>
+    </div>
+
+    <div class="inspector-metrics">
+      <div class="metric">
+        <span>Speed</span>
+        <strong id="inspSpeed">32 km/h</strong>
+      </div>
+      <div class="metric">
+        <span>Next Stop</span>
+        <strong id="inspNextStop">SIT Main Gate</strong>
+      </div>
+      <div class="metric">
+        <span>ETA</span>
+        <strong id="inspEta">3 min</strong>
+      </div>
+      <div class="metric">
+        <span>Crowd</span>
+        <strong id="inspCrowd">Moderate</strong>
+      </div>
+    </div>
+
+    <div class="inspector-actions">
+      <button class="accent-btn full" id="btnChaseCam">Start 3D Chase Cam</button>
+    </div>
+  </section>
+
+  <!-- Live Feed / Driver GPS Modal -->
+  <div class="modal-backdrop hidden" id="feedModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Connect Live Feed / Broadcast GPS</h2>
+        <button class="icon-btn" id="btnCloseFeedModal">✕</button>
+      </div>
+
+      <div class="modal-section">
+        <h3>1. Poll Custom Live JSON Endpoint</h3>
+        <p class="muted">
+          Expects an array of objects: <code>[{"id","routeId","reg","lat","lng","speed","heading"}]</code>
+        </p>
+        <div class="inline-form">
+          <input type="url" id="apiUrlInput" placeholder="https://your-server.com/tumkur-buses.json" />
+          <button class="accent-btn" id="btnConnectApi">Connect</button>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <h3>2. Broadcast Your Device GPS as a 3D Bus</h3>
+        <p class="muted">Shows your live location on the Tumakuru 3D map using browser Geolocation.</p>
+        <div class="inline-form">
+          <select id="gpsRouteSelect"></select>
+          <button class="accent-btn" id="btnToggleGps">Start GPS</button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="chip-btn" id="btnResetSim">Back to Simulated Fleet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notice -->
+  <div class="toast hidden" id="toast"></div>
+
+  <!-- Libraries -->
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- App Modules -->
+  <script src="routes.js"></script>
+  <script src="bus3d.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
