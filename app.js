@@ -25,8 +25,8 @@
     STOPS,
     haversineMeters,
     bearingDegrees,
+    setRouteStopMode,
     snapRoutesToRealRoads,
-    fetchOsmTumkurStops,
     createInitialFleet,
     repositionFleetOnRoutes,
     spawnLiveBus,
@@ -88,7 +88,6 @@
 
   // Core App State
   let fleet = createInitialFleet();
-  let extraOsmStops = [];
   let selectedRouteFilter = "ALL";
   let selectedBusId = null;
   let followBusActive = false;
@@ -155,8 +154,8 @@
 
   function getBusNextStopDisplay(bus) {
     const stop = bus.nextStopId ? getStopById(bus.nextStopId) : null;
-    if (!stop) return bus.nextStopName || "En Route";
-    return formatStopText(stop);
+    const label = stop ? formatStopText(stop) : bus.nextStopName || "En Route";
+    return showStops ? label : `Direct → ${label}`;
   }
 
   function makeCircleGeoJSON(coord, radiusMeters) {
@@ -335,8 +334,7 @@
     if (!map) return;
     stopMarkerEntries.forEach(({ marker }) => marker.remove());
 
-    const allMapStops = [...STOPS, ...extraOsmStops];
-    stopMarkerEntries = allMapStops.map((stop) => {
+    stopMarkerEntries = STOPS.map((stop) => {
       const el = document.createElement("div");
       el.className = `bus-stop-pin ${stop.major ? "major" : ""}`;
       el.innerHTML = `<span class="bus-stop-dot">B</span><span class="bus-stop-label">${formatStopPinHtml(stop)}</span>`;
@@ -497,9 +495,10 @@
     const routeObj = ROUTES.find((r) => r.id === bus.routeId);
     const banner = document.getElementById("selectedRouteBanner");
     if (banner) {
+      const modeTag = showStops ? "" : " (Direct Route)";
       document.getElementById("selectedRouteText").textContent = routeObj
-        ? `Route ${routeObj.id}: ${routeObj.name}`
-        : `Route ${bus.routeId}`;
+        ? `Route ${routeObj.id}${modeTag}: ${routeObj.name}`
+        : `Route ${bus.routeId}${modeTag}`;
       banner.classList.remove("hidden");
     }
 
@@ -919,7 +918,7 @@
             </span>
           </div>
           <div class="bus-card-sub">
-            <span>Next: ${getBusNextStopDisplay(b)}</span>
+            <span>${showStops ? "Next: " : ""}${getBusNextStopDisplay(b)}</span>
             <span>ETA ${b.etaMin}m</span>
           </div>
         </div>`;
@@ -1030,7 +1029,6 @@
 
     const stop = getStopById(stopSel.value) || STOPS[0];
 
-    // Prefer buses on routes that actually serve this stop
     const servingSet = new Set(stop.routeIds || []);
     const candidates = fleet.filter((b) => servingSet.size === 0 || servingSet.has(b.routeId));
     const pool = candidates.length > 0 ? candidates : fleet;
@@ -1115,12 +1113,43 @@
     });
   });
 
+  // Stops ON/OFF: switches stop markers AND swaps routes between stop-by-stop and direct normal paths
   on("btnToggleStops", "click", (e) => {
     showStops = !showStops;
     e.target.classList.toggle("active", showStops);
     e.target.textContent = showStops ? "Stops: ON" : "Stops: OFF";
+
+    if (typeof setRouteStopMode === "function") {
+      setRouteStopMode(showStops);
+    }
+    if (typeof repositionFleetOnRoutes === "function") {
+      repositionFleetOnRoutes(fleet);
+    }
+    updateRouteSourceData();
+    syncBusMarkers();
+
     const selectedBus = selectedBusId ? fleet.find((b) => b.id === selectedBusId) : null;
     syncStopMarkerHighlight(selectedBus ? selectedBus.routeId : null);
+    if (selectedBus) {
+      updateInspectorMetrics(selectedBus);
+      const routeObj = ROUTES.find((r) => r.id === selectedBus.routeId);
+      const modeTag = showStops ? "" : " (Direct Route)";
+      const bannerText = document.getElementById("selectedRouteText");
+      if (bannerText && routeObj) {
+        bannerText.textContent = `Route ${routeObj.id}${modeTag}: ${routeObj.name}`;
+      }
+    }
+    renderFleetList();
+    updateFleetCounters(
+      showStops
+        ? "Road-Aligned Live Fleet (Serving Stops)"
+        : "Direct Normal Routes (Stops Bypassed)"
+    );
+    showToast(
+      showStops
+        ? "Stops ON: Buses serving Tumakuru stops."
+        : "Stops OFF: Buses following direct normal routes without stopping."
+    );
   });
 
   on("btnLangToggle", "click", (e) => {
@@ -1275,7 +1304,6 @@
           const isNewBus = !prev;
           if (isNewBus) newlyLiveCount++;
 
-          // Derive heading smoothly from previous fix if feed omits heading
           let heading = Number(item.heading);
           if (Number.isNaN(heading)) {
             heading =
@@ -1397,7 +1425,11 @@
     }
     fleet = createInitialFleet();
     clearSelectedBus();
-    updateFleetCounters("Road-Aligned Live Fleet (Tumakuru & Bengaluru)");
+    updateFleetCounters(
+      showStops
+        ? "Road-Aligned Live Fleet (Serving Stops)"
+        : "Direct Normal Routes (Stops Bypassed)"
+    );
     renderRoutePills();
     renderFleetList();
     renderRoutesTab();
@@ -1466,16 +1498,6 @@
 
       initStopMarkers();
       syncBusMarkers();
-
-      // Pull additional real mapped OpenStreetMap bus stops across Tumakuru
-      if (typeof fetchOsmTumkurStops === "function") {
-        fetchOsmTumkurStops().then((osmStops) => {
-          if (osmStops && osmStops.length > 0) {
-            extraOsmStops = osmStops;
-            initStopMarkers();
-          }
-        });
-      }
     } catch (err) {
       console.error("Map init error:", err);
       showStatusError(`Map WebGL error: ${err.message}`);
@@ -1504,7 +1526,7 @@
     }, 14000);
   }
 
-  // 4. Main Animation Loop
+  // 4. Main Animation Loop (passes `showStops` so Stops OFF bypasses stop braking)
   let lastTime = performance.now();
   let uiTick = 0;
 
@@ -1513,7 +1535,7 @@
     const dt = Math.min(0.1, (now - lastTime) / 1000);
     lastTime = now;
 
-    stepFleet(fleet, dt);
+    stepFleet(fleet, dt, showStops);
     syncBusMarkers();
 
     if (selectedBusId) {
@@ -1544,7 +1566,7 @@
 
   requestAnimationFrame(loop);
 
-  // 5. Snap all 15 routes to real OSM roads & re-project buses immediately
+  // 5. Snap both stop-by-stop & direct paths to real OSM roads
   if (typeof snapRoutesToRealRoads === "function") {
     snapRoutesToRealRoads((route, done, total) => {
       if (typeof repositionFleetOnRoutes === "function") {
@@ -1556,7 +1578,9 @@
       updateFleetCounters(
         done < total
           ? `Snapping roads (${done}/${total})...`
-          : "Road-Aligned Live Fleet (Tumakuru & Bengaluru)"
+          : showStops
+            ? "Road-Aligned Live Fleet (Serving Stops)"
+            : "Direct Normal Routes (Stops Bypassed)"
       );
     }).then((snapped) => {
       if (snapped === 0) {
