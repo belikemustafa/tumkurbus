@@ -407,12 +407,12 @@ window.TumkurData = (() => {
     route.totalDist = Math.max(1, route.cumDist[route.cumDist.length - 1]);
   }
 
-  let routeStopsEnabled = true;
+  let routeStopsEnabled = false;
 
   ROUTES.forEach((route) => {
     route.stopPath = route.stops.map((s) => s.coord);
     route.directPath = route.directAnchors.map((c) => [...c]);
-    route.path = route.stopPath;
+    route.path = route.directPath;
     route.snapped = false;
     recomputeRouteMetrics(route);
   });
