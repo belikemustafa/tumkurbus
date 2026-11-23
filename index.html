@@ -3,10 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#b91c1c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Tumakuru Bus" />
   <title>Namma Tumakuru & BLR — Live 3D Bus Map</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon.svg" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Kannada:wght@500;700&display=swap" />
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=11" />
 </head>
 <body>
   <!-- Fullscreen 2D Top-Down Map with 3D Buses -->
@@ -31,26 +37,43 @@
         <button class="chip-btn" data-style="satellite">Satellite + Roads</button>
       </div>
       <div class="btn-group" aria-label="Map Overlays">
-        <button class="chip-btn active" id="btnToggleStops" title="Show or hide bus stops">Stops: OFF</button>
+        <button class="chip-btn active" id="btnToggleStops" title="Show or hide bus stops">Stops: ON</button>
+        <button class="chip-btn active" id="btnToggleTraffic" title="Show or hide traffic bottlenecks">Traffic: ON</button>
         <button class="chip-btn active" id="btnLangToggle" title="Switch stop language">EN + ಕನ್ನಡ</button>
-        <button class="chip-btn active" id="btnScaleToggle" title="Toggle 3D bus size on map">Bus Size: Large</button>
+        <button class="chip-btn active" id="btnScaleToggle" title="Toggle 3D bus size on map">Bus: Large</button>
       </div>
+      <button class="locate-btn" id="btnLocateMe" title="Center map & show closest approaching buses">◎ Locate Me</button>
+      <button class="wake-btn" id="btnOpenWakeModal" title="Wake-Me Destination Drop-Off Alarm">Wake-Me</button>
       <button class="alert-nav-btn" id="btnOpenAlertModal">Pass-By Alert</button>
-      <button class="accent-btn" id="btnOpenFeedModal">Live Feed / GPS</button>
+      <button class="chip-btn border-btn" id="btnOpenEditStops" title="Drag & drop stops on the map">Edit Stops</button>
+      <button class="accent-btn" id="btnOpenFeedModal">Live Feed</button>
+      <button class="install-btn hidden" id="btnInstallPwa">Install App</button>
     </div>
   </header>
 
-  <!-- Quick Jump Bar -->
+  <!-- Quick Jump + Saved Daily Commutes Bar -->
   <div class="landmark-bar">
-    <button class="landmark-pill" data-fly="tumkur">Tumakuru City</button>
-    <button class="landmark-pill" data-fly="ksrtc">KSRTC Stand</button>
+    <button class="landmark-pill" data-fly="tumkur">Tumakuru</button>
+    <button class="landmark-pill" data-fly="ksrtc">KSRTC</button>
     <button class="landmark-pill" data-fly="sit">SIT Gate</button>
-    <button class="landmark-pill" data-fly="mutt">Siddaganga Mutt</button>
-    <button class="landmark-pill blr" data-fly="corridor">TMK ↔ BLR Highway</button>
+    <button class="landmark-pill" data-fly="mutt">Mutt</button>
+    <button class="landmark-pill blr" data-fly="corridor">TMK ↔ BLR</button>
     <button class="landmark-pill blr" data-fly="nelamangala">Nelamangala</button>
-    <button class="landmark-pill blr" data-fly="majestic">Majestic (BLR)</button>
-    <button class="landmark-pill blr" data-fly="airport">BLR Airport (KIA)</button>
+    <button class="landmark-pill blr" data-fly="majestic">Majestic</button>
+    <button class="landmark-pill blr" data-fly="airport">Airport</button>
     <button class="landmark-pill accent" id="btnNearestStop">Nearest Stop</button>
+    <span class="bar-divider"></span>
+    <div class="saved-commutes-wrap" id="savedCommutesBar"></div>
+  </div>
+
+  <!-- Drag-and-Drop Stop Editor Floating Toolbar -->
+  <div class="stop-editor-bar hidden" id="stopEditorBar">
+    <strong>Stop Editor Mode</strong>
+    <span class="editor-hint">Drag any stop pin to adjust its exact position</span>
+    <button class="mini-banner-btn" id="btnEditorAddMode">+ Add New Stop</button>
+    <button class="mini-banner-btn primary" id="btnEditorExport">Copy JSON</button>
+    <button class="mini-banner-btn" id="btnEditorReset">Reset Edits</button>
+    <button class="mini-banner-btn" id="btnEditorDone">Done</button>
   </div>
 
   <!-- Selected Bus Route Banner -->
@@ -59,12 +82,29 @@
     <button class="mini-banner-btn" id="btnClearSelectedRoute">Show All Routes</button>
   </div>
 
-  <!-- Armed Alert Status Chip -->
-  <div class="active-alert-chip hidden" id="activeAlertChip">
-    <span class="alert-dot"></span>
-    <span id="activeAlertChipText">Watching fleet...</span>
-    <button class="chip-close-btn" id="btnStopAlertQuick" title="Disable alert">✕</button>
+  <!-- Armed Alert & Wake-Me Status Chips -->
+  <div class="floating-chips-stack">
+    <div class="active-alert-chip hidden" id="activeAlertChip">
+      <span class="alert-dot"></span>
+      <span id="activeAlertChipText">Watching fleet...</span>
+      <button class="chip-close-btn" id="btnStopAlertQuick" title="Disable pass-by alert">✕</button>
+    </div>
+
+    <div class="active-wake-chip hidden" id="activeWakeChip">
+      <span class="wake-dot"></span>
+      <span id="activeWakeChipText">Wake-Me armed...</span>
+      <button class="chip-close-btn" id="btnStopWakeQuick" title="Disable Wake-Me alarm">✕</button>
+    </div>
   </div>
+
+  <!-- Closest Approaching Buses Floating Card (triggered by Locate Me) -->
+  <section class="nearby-card hidden" id="nearbyBusesBar">
+    <div class="nearby-head">
+      <strong>Closest Approaching Buses</strong>
+      <button class="icon-btn" id="btnCloseNearbyBar" aria-label="Close">✕</button>
+    </div>
+    <div class="nearby-list" id="nearbyBusesList"></div>
+  </section>
 
   <!-- Approaching Bus Pass-By Alert Banner -->
   <div class="pass-alert-banner hidden" id="passAlertBanner">
@@ -78,6 +118,17 @@
     </div>
   </div>
 
+  <!-- Wake-Me Destination Drop-Off Alarm Banner -->
+  <div class="wake-alert-banner hidden" id="wakeAlertBanner">
+    <div class="pass-alert-content">
+      <strong>Destination Ahead — Wake Up!</strong>
+      <span id="wakeAlertMsg">Approaching your stop!</span>
+    </div>
+    <div class="pass-alert-actions">
+      <button class="mini-banner-btn primary" id="btnDismissWakeAlert">I'm Awake (Stop Alarm)</button>
+    </div>
+  </div>
+
   <!-- Left Side / Mobile Bottom Drawer -->
   <aside class="drawer" id="drawer">
     <div class="drawer-handle" id="drawerToggle">
@@ -86,9 +137,9 @@
 
     <div class="drawer-tabs">
       <button class="tab-btn active" data-tab="fleet" id="tabBtnFleet">Fleet</button>
-      <button class="tab-btn" data-tab="routes" id="tabBtnRoutes">Routes (16)</button>
+      <button class="tab-btn" data-tab="routes" id="tabBtnRoutes">Routes</button>
       <button class="tab-btn" data-tab="stops">Stops</button>
-      <button class="tab-btn" data-tab="fares">Fares ₹</button>
+      <button class="tab-btn" data-tab="fares">Plan & ₹</button>
     </div>
 
     <!-- Tab 1: Live Fleet -->
@@ -100,8 +151,9 @@
       <div class="list-scroll" id="fleetList"></div>
     </section>
 
-    <!-- Tab 2: Routes -->
+    <!-- Tab 2: Routes + KSRTC Timetables -->
     <section class="tab-panel" id="tab-routes">
+      <div class="traffic-strip" id="trafficStatusStrip"></div>
       <div class="list-scroll" id="routesList"></div>
     </section>
 
@@ -110,14 +162,14 @@
       <div class="stop-selector">
         <div class="stop-selector-head">
           <label for="stopSelect">Tumakuru / Bengaluru Bus Stop</label>
-          <button class="link-btn" id="btnCheckFareFromStop">Estimate Fare →</button>
+          <button class="link-btn" id="btnCheckFareFromStop">Plan Trip & Fare →</button>
         </div>
         <select id="stopSelect"></select>
       </div>
       <div class="arrival-board" id="arrivalBoard"></div>
     </section>
 
-    <!-- Tab 4: KSRTC Ticket Fare Estimator -->
+    <!-- Tab 4: Point-to-Point Trip Planner + KSRTC Fare Estimator -->
     <section class="tab-panel" id="tab-fares">
       <div class="fare-form">
         <div class="fare-row-wrap">
@@ -133,19 +185,25 @@
           <select id="fareToSelect"></select>
         </div>
 
-        <div class="fare-field">
-          <label for="farePassengerSelect">Passenger Category</label>
-          <select id="farePassengerSelect">
-            <option value="adult">Adult (Standard Fare)</option>
-            <option value="shakti">Women — Shakti Scheme (Free on Non-AC)</option>
-            <option value="senior">Senior Citizen 60+ (25% Off Non-AC / Rajahamsa)</option>
-            <option value="child">Child 6–12 yrs (50% Non-AC / 75% AC)</option>
-          </select>
+        <div class="fare-row-wrap">
+          <div class="fare-field">
+            <label for="farePassengerSelect">Passenger Category</label>
+            <select id="farePassengerSelect">
+              <option value="adult">Adult (Standard Fare)</option>
+              <option value="shakti">Women — Shakti Scheme (Free Non-AC)</option>
+              <option value="senior">Senior Citizen 60+ (25% Off)</option>
+              <option value="child">Child 6–12 yrs (50% / 75%)</option>
+            </select>
+          </div>
+          <button class="save-commute-btn" id="btnSaveCommute" title="Save to Daily Commutes">★ Save</button>
         </div>
       </div>
 
       <div class="fare-summary" id="fareSummary"></div>
-      <div class="list-scroll" id="fareResults"></div>
+      <div class="list-scroll" id="tripAndFareScroll">
+        <div id="tripPlanResults"></div>
+        <div id="fareResults"></div>
+      </div>
     </section>
   </aside>
 
@@ -188,10 +246,54 @@
     </div>
 
     <div class="inspector-actions">
-      <button class="accent-btn full" id="btnFollowBus">Follow Bus on Map</button>
+      <div class="inspector-btn-row">
+        <button class="accent-btn" id="btnFollowBus" style="flex:1">Follow Bus</button>
+        <button class="locate-btn" id="btnShareBus" title="Copy shareable live link">Share Link</button>
+      </div>
       <button class="alert-nav-btn full" id="btnAlertThisRoute">Alert When This Route Passes Me</button>
     </div>
   </section>
+
+  <!-- Destination Drop-Off Alarm (Wake-Me) Modal -->
+  <div class="modal-backdrop hidden" id="wakeModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Destination Drop-Off Alarm (Wake-Me)</h2>
+        <button class="icon-btn" id="btnCloseWakeModal">✕</button>
+      </div>
+
+      <div class="modal-section">
+        <h3>1. Destination Stop</h3>
+        <select id="wakeStopSelect" class="full-input"></select>
+      </div>
+
+      <div class="modal-section">
+        <h3>2. Wake-Up Distance Before Stop</h3>
+        <select id="wakeRadiusSelect" class="full-input">
+          <option value="500">500 m before stop (City)</option>
+          <option value="1000" selected>1 km before stop (Recommended)</option>
+          <option value="2000">2 km before stop (Highway / AC Coach)</option>
+          <option value="3500">3.5 km before stop (Early Wake-Up)</option>
+        </select>
+      </div>
+
+      <div class="modal-section">
+        <h3>3. Tracking Source</h3>
+        <select id="wakeModeSelect" class="full-input">
+          <option value="gps">My Live Phone GPS (When riding on the bus)</option>
+          <option value="selectedBus">Selected Live Bus on Map (Desk test / Tracking a friend)</option>
+        </select>
+        <p class="muted" style="margin-top:6px;">
+          Triggers a loud chime, vibration, and browser notification when you enter the wake-up zone.
+        </p>
+      </div>
+
+      <div class="modal-footer split">
+        <button class="chip-btn" id="btnDisableWake">Disable Alarm</button>
+        <button class="wake-btn" id="btnArmWake">Activate Wake-Me Alarm</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Pass-By Alert Setup Modal -->
   <div class="modal-backdrop hidden" id="alertModal">
@@ -229,7 +331,7 @@
       </div>
 
       <div class="modal-footer split">
-        < id="btnDisableAlert">Disable Alert</button>
+        <button class="chip-btn" id="btnDisableAlert">Disable Alert</button>
         <button class="alert-nav-btn" id="btnArmAlert">Activate Pass-By Alert</button>
       </div>
     </div>
@@ -273,13 +375,14 @@
   <!-- Toast Notice -->
   <div class="toast hidden" id="toast"></div>
 
-  <!-- Reliable jsDelivr Libraries -->
+  <!-- Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 
-  <!-- App Modules (cache-busted) -->
-  <script src="routes.js?v=8"></script>
-  <script src="bus3d.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <!-- App Modules -->
+  <script src="routes.js?v=11"></script>
+  <script src="features.js?v=11"></script>
+  <script src="bus3d.js?v=11"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
