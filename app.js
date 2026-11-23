@@ -92,7 +92,7 @@
   let selectedBusId = null;
   let followBusActive = false;
   let boostScale = true;
-  let showStops = true;
+  let showStops = false;
   let stopLangMode = "both"; // "both" | "kn" | "en"
   let isExternalApiMode = false;
   let apiPollTimer = null;
