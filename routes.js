@@ -1,49 +1,48 @@
 window.TumkurData = (() => {
-  const TUMKUR_CENTER = [77.1130, 13.3375];
+  // Centered on Tumakuru city core (between KSRTC Stand, Town Hall & University)
+  const TUMKUR_CENTER = [77.1105, 13.3385];
 
   const LANDMARKS = {
-    tumkur: { center: [77.1130, 13.3375], zoom: 13.5 },
-    ksrtc: { center: [77.1074, 13.3378], zoom: 15.8 },
-    sit: { center: [77.1262, 13.3268], zoom: 15.8 },
-    mutt: { center: [77.1496, 13.3198], zoom: 15.4 },
+    tumkur: { center: [77.1105, 13.3385], zoom: 13.4 },
+    ksrtc: { center: [77.10252, 13.34116], zoom: 15.8 },
+    sit: { center: [77.12615, 13.32920], zoom: 15.8 },
+    mutt: { center: [77.14963, 13.32065], zoom: 15.4 },
     corridor: { center: [77.3500, 13.1550], zoom: 10.1 },
-    nelamangala: { center: [77.3936, 13.0998], zoom: 13.6 },
-    majestic: { center: [77.5724, 12.9781], zoom: 14.3 },
-    airport: { center: [77.7066, 13.1986], zoom: 13.2 }
+    nelamangala: { center: [77.39426, 13.09821], zoom: 13.6 },
+    majestic: { center: [77.57243, 12.97815], zoom: 14.3 },
+    airport: { center: [77.70660, 13.19860], zoom: 13.2 }
   };
 
-  // Kannada translations for all Tumakuru & Bengaluru corridor bus stops
+  // Kannada names for all verified Tumakuru & Bengaluru corridor stops
   const STOP_KANNADA = {
-    heggere: "ಹೆಗ್ಗೆರೆ / ಎಸ್‌ಎಸ್‌ಎಂಸಿ",
-    gubbi: "ಗುಬ್ಬಿ ಗೇಟ್",
-    townhall: "ಟೌನ್ ಹಾಲ್ ವೃತ್ತ",
     ksrtc: "ತುಮಕೂರು ಕೆಎಸ್‌ಆರ್‌ಟಿಸಿ ನಿಲ್ದಾಣ",
-    univ: "ತುಮಕೂರು ವಿಶ್ವವಿದ್ಯಾಲಯ",
+    private_bs: "ತುಮಕೂರು ಖಾಸಗಿ ಬಸ್ ನಿಲ್ದಾಣ",
+    dist_hosp: "ಜಿಲ್ಲಾ ಆಸ್ಪತ್ರೆ (ಬಿ.ಎಚ್. ರಸ್ತೆ)",
+    townhall: "ಟೌನ್ ಹಾಲ್ ವೃತ್ತ",
+    railway: "ತುಮಕೂರು ರೈಲ್ವೆ ನಿಲ್ದಾಣ",
+    gubbi: "ಗುಬ್ಬಿ ಗೇಟ್ ವೃತ್ತ",
+    heggere: "ಹೆಗ್ಗೆರೆ / ಎಸ್‌ಎಸ್‌ಎಂಸಿ",
+    univ: "ತುಮಕೂರು ವಿಶ್ವವಿದ್ಯಾಲಯ / ಆರ್ಟ್ಸ್ ಕಾಲೇಜು",
+    sspuram: "ಎಸ್‌ಎಸ್ ಪುರಂ ಮುಖ್ಯ ರಸ್ತೆ",
     sit: "ಎಸ್‌ಐಟಿ ಮುಖ್ಯ ದ್ವಾರ",
-    batawadi: "ಬಟವಾಡಿ ಬೈಪಾಸ್",
+    sitback: "ಎಸ್‌ಐಟಿ ಹಿಂಬದಿ ದ್ವಾರ / ಪಾಲಿಟೆಕ್ನಿಕ್",
+    batawadi: "ಬಟವಾಡಿ ಜಂಕ್ಷನ್",
     kyathsandra: "ಕ್ಯಾತ್ಸಂದ್ರ ವೃತ್ತ",
     mutt: "ಸಿದ್ಧಗಂಗಾ ಮಠ",
-    shettihalli: "ಶೆಟ್ಟಿಹಳ್ಳಿ ಗೇಟ್",
-    sspuram: "ಎಸ್‌ಎಸ್ ಪುರಂ ಮುಖ್ಯ ರಸ್ತೆ",
-    siragate: "ಶಿರಾ ಗೇಟ್",
-    anthara: "ಅಂತರಸನಹಳ್ಳಿ",
-    maralur: "ಮರಳೂರು ದಿಣ್ಣೆ",
+    siragate: "ಶಿರಾ ಗೇಟ್ ವೃತ್ತ",
+    yellapura: "ಯಲ್ಲಾಪುರ",
     oorukere: "ಊರುಕೆರೆ (ಎನ್‌ಎಚ್-48)",
-    upparahalli: "ಉಪ್ಪಾರಹಳ್ಳಿ",
-    jayanagar: "ಜಯನಗರ ರಿಂಗ್ ರಸ್ತೆ",
-    sitback: "ಎಸ್‌ಐಟಿ ಹಿಂಬದಿ ದ್ವಾರ",
-    devaraya: "ದೇವರಾಯಪಟ್ಟಣ",
+    shettihalli: "ಶೆಟ್ಟಿಹಳ್ಳಿ ಮುಖ್ಯ ರಸ್ತೆ",
+    maralur: "ಮರಳೂರು ದಿಣ್ಣೆ",
+    melekote: "ಮೇಳೆಕೋಟೆ",
     gangasandra: "ಗಂಗಸಂದ್ರ",
     belagumba: "ಬೆಳಗುಂಬ",
-    bellavi: "ಬೆಳ್ಳಾವಿ ಕ್ರಾಸ್",
+    upparahalli: "ಉಪ್ಪಾರಹಳ್ಳಿ",
     gulur: "ಗೂಳೂರು ವೃತ್ತ",
     gubbitown: "ಗುಬ್ಬಿ ಬಸ್ ನಿಲ್ದಾಣ",
-    hebbur: "ಹೆಬ್ಬೂರು ಬಸ್ ನಿಲ್ದಾಣ",
     hirehalli: "ಹಿರೇಹಳ್ಳಿ ಕೈಗಾರಿಕಾ ಪ್ರದೇಶ",
-    dobbaspet: "ದಾಬಸ್‌ಪೇಟೆ (ಎನ್‌ಎಚ್-48)",
+    dobbaspet: "ದಾಬಸ್‌ಪೇಟೆ ಕೆಎಸ್‌ಆರ್‌ಟಿಸಿ ನಿಲ್ದಾಣ",
     nelamangala: "ನೆಲಮಂಗಲ ಬಸ್ ನಿಲ್ದಾಣ",
-    dasarahalli: "8ನೇ ಮೈಲಿ / ದಾಸರಹಳ್ಳಿ",
-    jalahalli: "ಜಾಲಹಳ್ಳಿ ಕ್ರಾಸ್",
     goragunte: "ಗೊರಗುಂಟೆಪಾಳ್ಯ",
     yeshwantpur: "ಯಶವಂತಪುರ ವೃತ್ತ",
     majestic: "ಮೆಜೆಸ್ಟಿಕ್ ಕೆಬಿಎಸ್ (ಬೆಂಗಳೂರು)",
@@ -52,206 +51,170 @@ window.TumkurData = (() => {
     shantinagar: "ಶಾಂತಿನಗರ ಬಸ್ ನಿಲ್ದಾಣ",
     silkboard: "ಸಿಲ್ಕ್ ಬೋರ್ಡ್ ಜಂಕ್ಷನ್",
     ecity: "ಎಲೆಕ್ಟ್ರಾನಿಕ್ ಸಿಟಿ ಹಂತ 1",
-    airport: "ಕೆಂಪೇಗೌಡ ವಿಮಾನ ನಿಲ್ದಾಣ (KIA)",
-    railway: "ತುಮಕೂರು ರೈಲ್ವೆ ನಿಲ್ದಾಣ",
-    ashoka: "ಅಶೋಕ ರಸ್ತೆ ನಿಲ್ದಾಣ",
-    dist_hosp: "ಜಿಲ್ಲಾ ಆಸ್ಪತ್ರೆ ನಿಲ್ದಾಣ",
-    mg_road: "ಎಂಜಿ ರಸ್ತೆ / ಚಿಕ್ಕಪೇಟೆ",
-    bh_road: "ಬಿ.ಎಚ್. ರಸ್ತೆ / ಅಮಾನಿಕೆರೆ",
-    siddaganga_ext: "ಸಿದ್ಧಗಂಗಾ ಬಡಾವಣೆ",
-    rk_ashram: "ರಾಮಕೃಷ್ಣ ಆಶ್ರಮ",
-    melekote: "ಮೇಳೆಕೋಟೆ ಕ್ರಾಸ್",
-    dibbur: "ದಿಬ್ಬೂರು ವೃತ್ತ",
-    yellapura: "ಯಲ್ಲಾಪುರ ಕ್ರಾಸ್",
-    ring_cross: "ರಿಂಗ್ ರಸ್ತೆ / ಬಟವಾಡಿ ಸೇತುವೆ",
-    honnenahalli: "ಹೊನ್ನೇನಹಳ್ಳಿ / ಬಡ್ಡಿಹಳ್ಳಿ"
+    airport: "ಕೆಂಪೇಗೌಡ ವಿಮಾನ ನಿಲ್ದಾಣ (KIA)"
   };
 
-  // 16 Routes (10 Tumakuru City/Suburban + 6 Bengaluru Corridors incl. 4 AC fleets)
+  // Master dictionary of OSM-verified stop coordinates [lng, lat]
+  const STOP_DEFS = {
+    ksrtc: { id: "ksrtc", name: "Tumakuru KSRTC Bus Stand", coord: [77.10252, 13.34116], major: true },
+    private_bs: { id: "private_bs", name: "Tumakuru Private Bus Stand", coord: [77.10118, 13.34250], major: false },
+    dist_hosp: { id: "dist_hosp", name: "District Hospital (B.H. Rd)", coord: [77.09940, 13.34060], major: true },
+    townhall: { id: "townhall", name: "Town Hall Circle", coord: [77.10201, 13.33764], major: true },
+    railway: { id: "railway", name: "Tumakuru Railway Station", coord: [77.10196, 13.33390], major: true },
+    gubbi: { id: "gubbi", name: "Gubbi Gate Circle", coord: [77.08780, 13.34480], major: true },
+    heggere: { id: "heggere", name: "Heggere / SSMC (B.H. Rd)", coord: [77.05964, 13.35278], major: true },
+    univ: { id: "univ", name: "Tumkur University / Arts College", coord: [77.11865, 13.33828], major: true },
+    sspuram: { id: "sspuram", name: "SS Puram Main Road", coord: [77.11282, 13.33228], major: true },
+    sit: { id: "sit", name: "SIT Main Gate (B.H. Rd)", coord: [77.12615, 13.32920], major: true },
+    sitback: { id: "sitback", name: "SIT Back Gate / Polytechnic", coord: [77.13180, 13.32604], major: false },
+    batawadi: { id: "batawadi", name: "Batawadi Junction", coord: [77.13198, 13.33372], major: true },
+    kyathsandra: { id: "kyathsandra", name: "Kyathsandra Circle", coord: [77.14623, 13.31369], major: true },
+    mutt: { id: "mutt", name: "Siddaganga Mutt", coord: [77.14963, 13.32065], major: true },
+    siragate: { id: "siragate", name: "Sira Gate Circle", coord: [77.10331, 13.36252], major: true },
+    yellapura: { id: "yellapura", name: "Yellapura", coord: [77.11720, 13.38383], major: false },
+    oorukere: { id: "oorukere", name: "Oorukere (NH-48)", coord: [77.08936, 13.40336], major: false },
+    shettihalli: { id: "shettihalli", name: "Shettihalli Main Road", coord: [77.12440, 13.31126], major: true },
+    maralur: { id: "maralur", name: "Maralur Dinne", coord: [77.09295, 13.32426], major: false },
+    melekote: { id: "melekote", name: "Melekote", coord: [77.07871, 13.32938], major: false },
+    gangasandra: { id: "gangasandra", name: "Gangasandra", coord: [77.07843, 13.32412], major: false },
+    belagumba: { id: "belagumba", name: "Belagumba", coord: [77.14278, 13.35241], major: false },
+    upparahalli: { id: "upparahalli", name: "Upparahalli", coord: [77.11050, 13.32450], major: false },
+    gulur: { id: "gulur", name: "Gulur Circle", coord: [77.09242, 13.29138], major: false },
+    gubbitown: { id: "gubbitown", name: "Gubbi Bus Stand", coord: [76.94200, 13.31180], major: true },
+    hirehalli: { id: "hirehalli", name: "Hirehalli (NH-48)", coord: [77.18456, 13.28316], major: false },
+    dobbaspet: { id: "dobbaspet", name: "Dobbaspet KSRTC Stand", coord: [77.24223, 13.22736], major: true },
+    nelamangala: { id: "nelamangala", name: "Nelamangala Bus Stand", coord: [77.39426, 13.09821], major: true },
+    goragunte: { id: "goragunte", name: "Goraguntepalya", coord: [77.54014, 13.02971], major: true },
+    yeshwantpur: { id: "yeshwantpur", name: "Yeshwantpur Circle", coord: [77.55400, 13.02350], major: true },
+    majestic: { id: "majestic", name: "Majestic KBS (Bengaluru)", coord: [77.57243, 12.97815], major: true },
+    hebbal: { id: "hebbal", name: "Hebbal Flyover (ORR)", coord: [77.59130, 13.03580], major: true },
+    krpuram: { id: "krpuram", name: "KR Puram (Bengaluru)", coord: [77.67620, 13.00680], major: true },
+    shantinagar: { id: "shantinagar", name: "Shantinagar Bus Station", coord: [77.59360, 12.95540], major: true },
+    silkboard: { id: "silkboard", name: "Silk Board Junction", coord: [77.62290, 12.91770], major: true },
+    ecity: { id: "ecity", name: "Electronic City Phase 1", coord: [77.66020, 12.84520], major: true },
+    airport: { id: "airport", name: "Kempegowda Intl Airport (KIA)", coord: [77.70660, 13.19860], major: true }
+  };
+
+  function resolveStops(ids) {
+    return ids.map((id) => {
+      const def = STOP_DEFS[id];
+      return {
+        ...def,
+        coord: [...def.coord],
+        kn: STOP_KANNADA[id] || def.name
+      };
+    });
+  }
+
+  // 15 Authentic Routes (9 Tumakuru KSRTC City/Suburban + 6 Bengaluru Corridors incl. 4 AC fleets)
   const ROUTES = [
     {
       id: "201",
       category: "city",
       isAC: false,
-      name: "Heggere – KSRTC Stand – SIT – Kyathsandra",
+      name: "Heggere – Gubbi Gate – KSRTC – SIT – Kyathsandra",
       livery: "KSRTC City Crimson",
       color: "#dc2626",
       accent: "#fde047",
-      busCount: 6,
+      busCount: 7,
       baseSpeed: 32,
-      stops: [
-        { id: "heggere", name: "Heggere / SSMC", coord: [77.0655, 13.3312], major: true },
-        { id: "gubbi", name: "Gubbi Gate", coord: [77.0902, 13.3376], major: true },
-        { id: "townhall", name: "Town Hall Circle", coord: [77.1018, 13.3408], major: true },
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "univ", name: "Tumkur University", coord: [77.1165, 13.3340], major: true },
-        { id: "sit", name: "SIT Main Gate", coord: [77.1262, 13.3268], major: true },
-        { id: "batawadi", name: "Batawadi Bypass", coord: [77.1319, 13.3282], major: true },
-        { id: "kyathsandra", name: "Kyathsandra Circle", coord: [77.1476, 13.3143], major: true }
-      ]
+      stops: resolveStops(["heggere", "gubbi", "dist_hosp", "ksrtc", "univ", "sit", "kyathsandra"])
     },
     {
       id: "201E",
       category: "city",
       isAC: false,
-      name: "KSRTC Stand – Tumkur Univ – Siddaganga Mutt",
+      name: "KSRTC Stand – Tumkur Univ – SIT – Siddaganga Mutt",
       livery: "EV City Emerald",
       color: "#059669",
       accent: "#a7f3d0",
       busCount: 4,
       baseSpeed: 30,
-      stops: [
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "univ", name: "Tumkur University", coord: [77.1165, 13.3340], major: true },
-        { id: "sit", name: "SIT Main Gate", coord: [77.1262, 13.3268], major: true },
-        { id: "kyathsandra", name: "Kyathsandra Circle", coord: [77.1476, 13.3143], major: true },
-        { id: "mutt", name: "Siddaganga Mutt", coord: [77.1496, 13.3198], major: true }
-      ]
+      stops: resolveStops(["ksrtc", "univ", "sit", "kyathsandra", "mutt"])
+    },
+    {
+      id: "201B",
+      category: "city",
+      isAC: false,
+      name: "KSRTC – Town Hall – SS Puram – SIT Back Gate – Kyathsandra",
+      livery: "Teal City Shuttle",
+      color: "#0d9488",
+      accent: "#ccfbf1",
+      busCount: 4,
+      baseSpeed: 30,
+      stops: resolveStops(["ksrtc", "townhall", "sspuram", "sitback", "kyathsandra"])
     },
     {
       id: "202",
       category: "city",
       isAC: false,
-      name: "Shettihalli – KSRTC – Sira Gate – Antharasanahalli",
+      name: "Shettihalli – SS Puram – KSRTC – Sira Gate – Yellapura",
       livery: "Royal Gold City",
       color: "#d97706",
       accent: "#1e293b",
-      busCount: 5,
-      baseSpeed: 34,
-      stops: [
-        { id: "shettihalli", name: "Shettihalli Gate", coord: [77.0958, 13.3260], major: false },
-        { id: "sspuram", name: "SS Puram Main Rd", coord: [77.1045, 13.3315], major: true },
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "townhall", name: "Town Hall Circle", coord: [77.1018, 13.3408], major: true },
-        { id: "siragate", name: "Sira Gate", coord: [77.1021, 13.3543], major: true },
-        { id: "anthara", name: "Antharasanahalli", coord: [77.0956, 13.3818], major: false }
-      ]
+      busCount: 6,
+      baseSpeed: 33,
+      stops: resolveStops(["shettihalli", "sspuram", "ksrtc", "siragate", "yellapura"])
     },
     {
       id: "203",
       category: "city",
       isAC: false,
-      name: "Maralur Dinne – Gubbi Gate – KSRTC – Oorukere",
+      name: "Maralur Dinne – Railway Stn – KSRTC – Sira Gate – Oorukere",
       livery: "Coastal Cyan",
       color: "#0891b2",
       accent: "#cffafe",
       busCount: 5,
-      baseSpeed: 33,
-      stops: [
-        { id: "maralur", name: "Maralur Dinne", coord: [77.0785, 13.3348], major: false },
-        { id: "gubbi", name: "Gubbi Gate", coord: [77.0902, 13.3376], major: true },
-        { id: "townhall", name: "Town Hall Circle", coord: [77.1018, 13.3408], major: true },
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "siragate", name: "Sira Gate", coord: [77.1021, 13.3543], major: true },
-        { id: "oorukere", name: "Oorukere (NH-48)", coord: [77.0875, 13.3950], major: false }
-      ]
+      baseSpeed: 34,
+      stops: resolveStops(["maralur", "railway", "townhall", "ksrtc", "siragate", "oorukere"])
     },
     {
       id: "204",
       category: "city",
       isAC: false,
-      name: "SS Puram – Ring Road – SIT – Batawadi",
+      name: "Gangasandra – Melekote – KSRTC – Batawadi – Belagumba",
       livery: "Deccan Violet",
       color: "#7c3aed",
       accent: "#ede9fe",
-      busCount: 4,
+      busCount: 5,
       baseSpeed: 31,
-      stops: [
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "sspuram", name: "SS Puram Main Rd", coord: [77.1045, 13.3315], major: true },
-        { id: "upparahalli", name: "Upparahalli", coord: [77.1140, 13.3230], major: false },
-        { id: "jayanagar", name: "Jayanagar Ring Rd", coord: [77.1210, 13.3245], major: false },
-        { id: "sit", name: "SIT Main Gate", coord: [77.1262, 13.3268], major: true },
-        { id: "batawadi", name: "Batawadi Bypass", coord: [77.1319, 13.3282], major: true }
-      ]
+      stops: resolveStops(["gangasandra", "melekote", "townhall", "ksrtc", "univ", "batawadi", "belagumba"])
     },
     {
       id: "205",
       category: "city",
       isAC: false,
-      name: "KSRTC – SIT Back Gate – Devarayapatna – Kyathsandra",
-      livery: "Teal Metro Shuttle",
-      color: "#0d9488",
-      accent: "#ccfbf1",
+      name: "KSRTC – Town Hall – Railway Stn – Upparahalli – Shettihalli",
+      livery: "Ruby Local",
+      color: "#be185d",
+      accent: "#fbcfe8",
       busCount: 4,
       baseSpeed: 30,
-      stops: [
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "upparahalli", name: "Upparahalli", coord: [77.1140, 13.3230], major: false },
-        { id: "sitback", name: "SIT Back Gate", coord: [77.1278, 13.3218], major: false },
-        { id: "devaraya", name: "Devarayapatna", coord: [77.1398, 13.3072], major: false },
-        { id: "kyathsandra", name: "Kyathsandra Circle", coord: [77.1476, 13.3143], major: true }
-      ]
+      stops: resolveStops(["ksrtc", "townhall", "railway", "upparahalli", "shettihalli"])
     },
     {
       id: "206",
       category: "city",
       isAC: false,
-      name: "Gangasandra – Belagumba – KSRTC – SIT Gate",
-      livery: "Ruby Local",
-      color: "#be185d",
-      accent: "#fbcfe8",
-      busCount: 4,
-      baseSpeed: 32,
-      stops: [
-        { id: "gangasandra", name: "Gangasandra", coord: [77.1225, 13.3685], major: false },
-        { id: "belagumba", name: "Belagumba", coord: [77.1172, 13.3522], major: false },
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "univ", name: "Tumkur University", coord: [77.1165, 13.3340], major: true },
-        { id: "sit", name: "SIT Main Gate", coord: [77.1262, 13.3268], major: true }
-      ]
-    },
-    {
-      id: "207",
-      category: "city",
-      isAC: false,
-      name: "Bellavi Cross – Gubbi Gate – KSRTC – Gulur",
+      name: "KSRTC – Town Hall – Maralur – Gulur (Kunigal Rd)",
       livery: "Forest Green City",
       color: "#15803d",
       accent: "#bbf7d0",
       busCount: 4,
-      baseSpeed: 33,
-      stops: [
-        { id: "bellavi", name: "Bellavi Cross", coord: [77.0560, 13.3560], major: false },
-        { id: "gubbi", name: "Gubbi Gate", coord: [77.0902, 13.3376], major: true },
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "shettihalli", name: "Shettihalli Gate", coord: [77.0958, 13.3260], major: false },
-        { id: "gulur", name: "Gulur Circle", coord: [77.0888, 13.2852], major: false }
-      ]
+      baseSpeed: 34,
+      stops: resolveStops(["ksrtc", "townhall", "maralur", "gulur"])
     },
     {
       id: "208",
       category: "city",
       isAC: false,
-      name: "Tumakuru – Heggere – Gubbi Town Shuttle",
+      name: "Tumakuru KSRTC – Gubbi Gate – Heggere – Gubbi Town",
       livery: "Suburban Ochre",
       color: "#b45309",
       accent: "#fef3c7",
       busCount: 3,
       baseSpeed: 42,
-      stops: [
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "gubbi", name: "Gubbi Gate", coord: [77.0902, 13.3376], major: true },
-        { id: "heggere", name: "Heggere / SSMC", coord: [77.0655, 13.3312], major: true },
-        { id: "gubbitown", name: "Gubbi Bus Stand", coord: [76.9420, 13.3118], major: true }
-      ]
-    },
-    {
-      id: "209",
-      category: "city",
-      isAC: false,
-      name: "Tumakuru – Kunigal Rd – Hebbur Shuttle",
-      livery: "Suburban Slate",
-      color: "#475569",
-      accent: "#e2e8f0",
-      busCount: 3,
-      baseSpeed: 40,
-      stops: [
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "sspuram", name: "SS Puram Main Rd", coord: [77.1045, 13.3315], major: true },
-        { id: "gulur", name: "Gulur Circle", coord: [77.0888, 13.2852], major: false },
-        { id: "hebbur", name: "Hebbur Bus Stand", coord: [77.0712, 13.1950], major: false }
-      ]
+      stops: resolveStops(["ksrtc", "dist_hosp", "gubbi", "heggere", "gubbitown"])
     },
     {
       id: "BLR-SRG",
@@ -263,19 +226,10 @@ window.TumkurData = (() => {
       accent: "#fef08a",
       busCount: 8,
       baseSpeed: 62,
-      stops: [
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "sit", name: "SIT Main Gate", coord: [77.1262, 13.3268], major: true },
-        { id: "kyathsandra", name: "Kyathsandra Circle", coord: [77.1476, 13.3143], major: true },
-        { id: "hirehalli", name: "Hirehalli Ind. Area", coord: [77.1755, 13.2845], major: false },
-        { id: "dobbaspet", name: "Dobbaspet (NH-48)", coord: [77.2430, 13.2276], major: true },
-        { id: "nelamangala", name: "Nelamangala Bus Stand", coord: [77.3936, 13.0998], major: true },
-        { id: "dasarahalli", name: "8th Mile / Dasarahalli", coord: [77.5085, 13.0448], major: false },
-        { id: "jalahalli", name: "Jalahalli Cross", coord: [77.5154, 13.0384], major: false },
-        { id: "goragunte", name: "Goraguntepalya", coord: [77.5404, 13.0285], major: true },
-        { id: "yeshwantpur", name: "Yeshwantpur Circle", coord: [77.5540, 13.0235], major: true },
-        { id: "majestic", name: "Majestic KBS (Bengaluru)", coord: [77.5724, 12.9781], major: true }
-      ]
+      stops: resolveStops([
+        "ksrtc", "univ", "sit", "kyathsandra", "hirehalli",
+        "dobbaspet", "nelamangala", "goragunte", "yeshwantpur", "majestic"
+      ])
     },
     {
       id: "BLR-RJ",
@@ -287,15 +241,10 @@ window.TumkurData = (() => {
       accent: "#ffedd5",
       busCount: 5,
       baseSpeed: 65,
-      stops: [
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "kyathsandra", name: "Kyathsandra Circle", coord: [77.1476, 13.3143], major: true },
-        { id: "dobbaspet", name: "Dobbaspet (NH-48)", coord: [77.2430, 13.2276], major: true },
-        { id: "nelamangala", name: "Nelamangala Bus Stand", coord: [77.3936, 13.0998], major: true },
-        { id: "goragunte", name: "Goraguntepalya", coord: [77.5404, 13.0285], major: true },
-        { id: "hebbal", name: "Hebbal Flyover (ORR)", coord: [77.5913, 13.0358], major: true },
-        { id: "krpuram", name: "KR Puram (Bengaluru)", coord: [77.6762, 13.0068], major: true }
-      ]
+      stops: resolveStops([
+        "ksrtc", "kyathsandra", "dobbaspet", "nelamangala",
+        "goragunte", "hebbal", "krpuram"
+      ])
     },
     {
       id: "BLR-AC1",
@@ -307,15 +256,10 @@ window.TumkurData = (() => {
       accent: "#93c5fd",
       busCount: 7,
       baseSpeed: 72,
-      stops: [
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "batawadi", name: "Batawadi Bypass", coord: [77.1319, 13.3282], major: true },
-        { id: "dobbaspet", name: "Dobbaspet (NH-48)", coord: [77.2430, 13.2276], major: true },
-        { id: "nelamangala", name: "Nelamangala Bypass", coord: [77.3936, 13.0998], major: true },
-        { id: "goragunte", name: "Goraguntepalya", coord: [77.5404, 13.0285], major: true },
-        { id: "yeshwantpur", name: "Yeshwantpur Circle", coord: [77.5540, 13.0235], major: true },
-        { id: "majestic", name: "Majestic KBS (Bengaluru)", coord: [77.5724, 12.9781], major: true }
-      ]
+      stops: resolveStops([
+        "ksrtc", "batawadi", "kyathsandra", "dobbaspet",
+        "nelamangala", "goragunte", "yeshwantpur", "majestic"
+      ])
     },
     {
       id: "BLR-EV",
@@ -327,16 +271,10 @@ window.TumkurData = (() => {
       accent: "#bae6fd",
       busCount: 6,
       baseSpeed: 68,
-      stops: [
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "sit", name: "SIT Main Gate", coord: [77.1262, 13.3268], major: true },
-        { id: "kyathsandra", name: "Kyathsandra Circle", coord: [77.1476, 13.3143], major: true },
-        { id: "dobbaspet", name: "Dobbaspet (NH-48)", coord: [77.2430, 13.2276], major: true },
-        { id: "nelamangala", name: "Nelamangala Bus Stand", coord: [77.3936, 13.0998], major: true },
-        { id: "jalahalli", name: "Jalahalli Cross", coord: [77.5154, 13.0384], major: false },
-        { id: "yeshwantpur", name: "Yeshwantpur Circle", coord: [77.5540, 13.0235], major: true },
-        { id: "majestic", name: "Majestic KBS (Bengaluru)", coord: [77.5724, 12.9781], major: true }
-      ]
+      stops: resolveStops([
+        "ksrtc", "univ", "sit", "kyathsandra", "dobbaspet",
+        "nelamangala", "goragunte", "yeshwantpur", "majestic"
+      ])
     },
     {
       id: "BLR-AMB",
@@ -348,16 +286,10 @@ window.TumkurData = (() => {
       accent: "#fde047",
       busCount: 6,
       baseSpeed: 74,
-      stops: [
-        { id: "batawadi", name: "Batawadi Bypass", coord: [77.1319, 13.3282], major: true },
-        { id: "kyathsandra", name: "Kyathsandra Circle", coord: [77.1476, 13.3143], major: true },
-        { id: "dobbaspet", name: "Dobbaspet (NH-48)", coord: [77.2430, 13.2276], major: true },
-        { id: "nelamangala", name: "Nelamangala Bypass", coord: [77.3936, 13.0998], major: true },
-        { id: "goragunte", name: "Goraguntepalya", coord: [77.5404, 13.0285], major: true },
-        { id: "shantinagar", name: "Shantinagar Bus Station", coord: [77.5936, 12.9554], major: true },
-        { id: "silkboard", name: "Silk Board Junction", coord: [77.6229, 12.9177], major: true },
-        { id: "ecity", name: "Electronic City Phase 1", coord: [77.6602, 12.8452], major: true }
-      ]
+      stops: resolveStops([
+        "batawadi", "kyathsandra", "dobbaspet", "nelamangala",
+        "goragunte", "shantinagar", "silkboard", "ecity"
+      ])
     },
     {
       id: "BLR-KIA",
@@ -369,41 +301,19 @@ window.TumkurData = (() => {
       accent: "#99f6e4",
       busCount: 4,
       baseSpeed: 75,
-      stops: [
-        { id: "ksrtc", name: "Tumakuru KSRTC Stand", coord: [77.1074, 13.3378], major: true },
-        { id: "batawadi", name: "Batawadi Bypass", coord: [77.1319, 13.3282], major: true },
-        { id: "dobbaspet", name: "Dobbaspet (NH-48)", coord: [77.2430, 13.2276], major: true },
-        { id: "nelamangala", name: "Nelamangala Bypass", coord: [77.3936, 13.0998], major: true },
-        { id: "goragunte", name: "Goraguntepalya", coord: [77.5404, 13.0285], major: true },
-        { id: "hebbal", name: "Hebbal Flyover (ORR)", coord: [77.5913, 13.0358], major: true },
-        { id: "airport", name: "Kempegowda Intl Airport (KIA)", coord: [77.7066, 13.1986], major: true }
-      ]
+      stops: resolveStops([
+        "ksrtc", "batawadi", "dobbaspet", "nelamangala",
+        "goragunte", "hebbal", "airport"
+      ])
     }
   ];
 
-  // Additional local Tumakuru bus stops across the city
-  const EXTRA_TUMKUR_STOPS = [
-    { id: "railway", name: "Tumkur Railway Station", coord: [77.0984, 13.3444], major: true, routeIds: ["202", "203"] },
-    { id: "ashoka", name: "Ashoka Road Bus Stop", coord: [77.1045, 13.3393], major: false, routeIds: ["201", "202", "203"] },
-    { id: "dist_hosp", name: "District Hospital Stop", coord: [77.1105, 13.3360], major: true, routeIds: ["201", "201E", "206"] },
-    { id: "mg_road", name: "MG Road / Chikpet", coord: [77.1014, 13.3370], major: false, routeIds: ["202", "204"] },
-    { id: "bh_road", name: "B.H. Road / Amanikere", coord: [77.1135, 13.3352], major: false, routeIds: ["201", "201E", "BLR-SRG"] },
-    { id: "siddaganga_ext", name: "Siddaganga Extension", coord: [77.1204, 13.3302], major: false, routeIds: ["201", "201E", "204"] },
-    { id: "rk_ashram", name: "Ramakrishna Ashrama", coord: [77.0955, 13.3388], major: false, routeIds: ["201", "203"] },
-    { id: "melekote", name: "Melekote Cross", coord: [77.1032, 13.3474], major: false, routeIds: ["202", "203"] },
-    { id: "dibbur", name: "Dibbur Circle", coord: [77.1088, 13.3562], major: false, routeIds: ["202", "206"] },
-    { id: "yellapura", name: "Yellapura Cross", coord: [77.0942, 13.3640], major: false, routeIds: ["202", "203"] },
-    { id: "ring_cross", name: "Ring Road / Batawadi Bridge", coord: [77.1338, 13.3256], major: false, routeIds: ["201", "204", "BLR-AC1"] },
-    { id: "honnenahalli", name: "Honnenahalli / Baddihalli", coord: [77.1180, 13.3148], major: false, routeIds: ["205", "209"] }
-  ];
-
-  // Collect all unique stops with Kannada labels + serving routes
+  // Collect all unique stops with serving route IDs
   const stopMap = new Map();
   ROUTES.forEach((route) => {
     route.stops.forEach((s) => {
-      s.kn = STOP_KANNADA[s.id] || s.name;
       if (!stopMap.has(s.id)) {
-        stopMap.set(s.id, { ...s, kn: s.kn, routeIds: new Set([route.id]) });
+        stopMap.set(s.id, { ...s, routeIds: new Set([route.id]) });
       } else {
         const existing = stopMap.get(s.id);
         existing.routeIds.add(route.id);
@@ -412,12 +322,15 @@ window.TumkurData = (() => {
     });
   });
 
-  EXTRA_TUMKUR_STOPS.forEach((s) => {
-    const kn = STOP_KANNADA[s.id] || s.name;
-    if (!stopMap.has(s.id)) {
-      stopMap.set(s.id, { ...s, kn, routeIds: new Set(s.routeIds || []) });
-    }
-  });
+  // Include Private Bus Stand right next to KSRTC
+  if (!stopMap.has("private_bs")) {
+    const pbs = STOP_DEFS.private_bs;
+    stopMap.set("private_bs", {
+      ...pbs,
+      kn: STOP_KANNADA.private_bs,
+      routeIds: new Set(["201", "202", "203"])
+    });
+  }
 
   const STOPS = Array.from(stopMap.values()).map((s) => ({
     ...s,
@@ -472,7 +385,39 @@ window.TumkurData = (() => {
     recomputeRouteMetrics(route);
   });
 
-  const CACHE_KEY = "tumkur_blr_osrm_paths_v2";
+  // Purge stale old caches so old wrong paths never load again
+  const CACHE_KEY = "tumkur_blr_osrm_paths_v4_verified";
+  try {
+    localStorage.removeItem("tumkur_blr_osrm_paths_v1");
+    localStorage.removeItem("tumkur_blr_osrm_paths_v2");
+  } catch {
+    // Ignore storage errors
+  }
+
+  // Dual OSRM endpoints (primary + OSM Germany backup) with continue_straight=true
+  const OSRM_BASES = [
+    "https://router.project-osrm.org/route/v1/driving",
+    "https://routing.openstreetmap.de/routed-car/route/v1/driving"
+  ];
+
+  async function fetchRoadGeometry(coordStr) {
+    for (const base of OSRM_BASES) {
+      try {
+        const url = `${base}/${coordStr}?overview=full&geometries=geojson&continue_straight=true`;
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const data = await res.json();
+        const coords = data?.routes?.[0]?.geometry?.coordinates;
+        const waypoints = data?.waypoints || [];
+        if (Array.isArray(coords) && coords.length > 2) {
+          return { coords, waypoints };
+        }
+      } catch {
+        // Try backup routing server
+      }
+    }
+    return null;
+  }
 
   async function snapRoutesToRealRoads(onRouteSnapped) {
     let cache = {};
@@ -485,8 +430,9 @@ window.TumkurData = (() => {
     let snappedCount = 0;
 
     for (const route of ROUTES) {
-      if (Array.isArray(cache[route.id]) && cache[route.id].length > route.stops.length) {
-        route.path = cache[route.id];
+      const cached = cache[route.id];
+      if (cached && Array.isArray(cached.coords) && cached.coords.length > route.stops.length) {
+        route.path = cached.coords;
         route.snapped = true;
         recomputeRouteMetrics(route);
         snappedCount++;
@@ -495,34 +441,97 @@ window.TumkurData = (() => {
       }
 
       const coordStr = route.stops.map((s) => `${s.coord[0]},${s.coord[1]}`).join(";");
-      const url = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`;
+      const result = await fetchRoadGeometry(coordStr);
 
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("OSRM HTTP " + res.status);
-        const data = await res.json();
-        const coords = data?.routes?.[0]?.geometry?.coordinates;
-        if (Array.isArray(coords) && coords.length > 2) {
-          route.path = coords;
-          route.snapped = true;
-          recomputeRouteMetrics(route);
-          cache[route.id] = coords;
-          try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-          } catch {
-            // Ignore quota errors
+      if (result) {
+        route.path = result.coords;
+        route.snapped = true;
+        recomputeRouteMetrics(route);
+
+        // Snap stop coordinates cleanly to the actual road carriageway if within 180m
+        result.waypoints.forEach((wp, idx) => {
+          const stop = route.stops[idx];
+          if (stop && Array.isArray(wp.location)) {
+            const shift = haversineMeters(stop.coord, wp.location);
+            if (shift < 180) {
+              stop.coord = wp.location;
+              const master = STOPS_BY_ID.get(stop.id);
+              if (master) master.coord = wp.location;
+            }
           }
-          snappedCount++;
-          if (onRouteSnapped) onRouteSnapped(route, snappedCount, ROUTES.length);
+        });
+
+        cache[route.id] = { coords: result.coords };
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+        } catch {
+          // Ignore quota errors
         }
-      } catch {
-        // Keep fallback path if offline
+        snappedCount++;
+        if (onRouteSnapped) onRouteSnapped(route, snappedCount, ROUTES.length);
       }
 
-      await new Promise((r) => setTimeout(r, 170));
+      await new Promise((r) => setTimeout(r, 240));
     }
 
     return snappedCount;
+  }
+
+  /**
+   * Optional async lookup of real OpenStreetMap bus stops (highway=bus_stop)
+   * across Tumakuru city via Overpass API, cached for 24h.
+   */
+  const OSM_STOPS_CACHE_KEY = "tumkur_osm_bus_stops_v1";
+
+  async function fetchOsmTumkurStops() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(OSM_STOPS_CACHE_KEY) || "null");
+      if (saved && Date.now() - saved.ts < 86400000 && Array.isArray(saved.stops)) {
+        return saved.stops;
+      }
+    } catch {
+      // Ignore cache read error
+    }
+
+    const query = `[out:json][timeout:12];node["highway"="bus_stop"](13.29,77.05,13.40,77.16);out body;`;
+    try {
+      const res = await fetch(
+        `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      const osmStops = [];
+      (data.elements || []).forEach((el) => {
+        if (!el.lat || !el.lon) return;
+        const name = el.tags?.name || el.tags?.["name:en"];
+        if (!name) return;
+        // Skip duplicates within 140m of our curated core stops
+        const nearCore = STOPS.some(
+          (s) => haversineMeters(s.coord, [el.lon, el.lat]) < 140
+        );
+        if (nearCore) return;
+        osmStops.push({
+          id: `osm-${el.id}`,
+          name,
+          kn: el.tags?.["name:kn"] || name,
+          coord: [el.lon, el.lat],
+          major: false,
+          routeIds: []
+        });
+      });
+
+      try {
+        localStorage.setItem(
+          OSM_STOPS_CACHE_KEY,
+          JSON.stringify({ ts: Date.now(), stops: osmStops })
+        );
+      } catch {
+        // Ignore storage error
+      }
+      return osmStops;
+    } catch {
+      return [];
+    }
   }
 
   function findNearestCumDist(route, coord) {
@@ -538,29 +547,17 @@ window.TumkurData = (() => {
     return route.cumDist[bestIdx] || 0;
   }
 
-  /**
-   * KSRTC Ticket Fare Estimator between any two stops
-   * Calibrated to Karnataka's Nov 5, 2026 KSRTC fare revision:
-   * - City ordinary minimum ₹10, scaling by stage
-   * - Tumakuru ↔ Bengaluru KSRTC Express / Sarige ₹100 (~70 km)
-   * - Shakti Scheme (₹0 on Non-AC Ordinary/City/Sarige)
-   * - Senior Citizen (25% off Non-AC & Rajahamsa), Child (50% Non-AC / 75% Premium AC)
-   */
   function estimateFares(fromId, toId, passengerType = "adult") {
     const fromStop = getStopById(fromId);
     const toStop = getStopById(toId);
-    if (!fromStop || !toStop || fromId === toId) {
-      return null;
-    }
+    if (!fromStop || !toStop || fromId === toId) return null;
 
-    // Find direct routes connecting both stops
     const directRoutes = ROUTES.filter((r) => {
-      const hasFrom = r.stops.some((s) => s.id === fromId) || fromStop.routeIds.includes(r.id);
-      const hasTo = r.stops.some((s) => s.id === toId) || toStop.routeIds.includes(r.id);
+      const hasFrom = r.stops.some((s) => s.id === fromId) || (fromStop.routeIds || []).includes(r.id);
+      const hasTo = r.stops.some((s) => s.id === toId) || (toStop.routeIds || []).includes(r.id);
       return hasFrom && hasTo;
     });
 
-    // Compute road distance (preferring snapped OSRM route distance if direct)
     let distanceKm;
     if (directRoutes.length > 0 && directRoutes[0].snapped) {
       const r = directRoutes[0];
@@ -600,7 +597,6 @@ window.TumkurData = (() => {
 
     const tiers = [];
 
-    // 1. Tumakuru City Ordinary / EV Shuttle
     if (isLocalCityTrip || directRoutes.some((r) => r.category === "city")) {
       const stageSteps = Math.max(0, Math.ceil((distanceKm - 2.0) / 2.6));
       const baseCity = Math.min(45, 10 + stageSteps * 5);
@@ -622,9 +618,7 @@ window.TumkurData = (() => {
       });
     }
 
-    // 2. Intercity & Highway Tiers (shown for trips > 7 km or any Bengaluru corridor route)
     if (!isLocalCityTrip || directRoutes.some((r) => r.category === "bangalore")) {
-      // KSRTC Karnataka Sarige Express (Calibrated: 70 km -> ₹100)
       const baseSarige = Math.max(15, Math.round(12 + distanceKm * 1.26));
       const adjSarige = applyConcession(baseSarige, {
         shaktiEligible: true,
@@ -643,7 +637,6 @@ window.TumkurData = (() => {
         routeIds: directRoutes.filter((r) => r.id === "BLR-SRG").map((r) => r.id)
       });
 
-      // Rajahamsa Executive
       const baseRajahamsa = Math.max(45, Math.round(20 + distanceKm * 1.85));
       const adjRajahamsa = applyConcession(baseRajahamsa, {
         shaktiEligible: false,
@@ -662,7 +655,6 @@ window.TumkurData = (() => {
         routeIds: directRoutes.filter((r) => r.id === "BLR-RJ").map((r) => r.id)
       });
 
-      // EV Power Plus AC
       const baseEvAc = Math.max(60, Math.round(25 + distanceKm * 2.15));
       const adjEvAc = applyConcession(baseEvAc, {
         shaktiEligible: false,
@@ -681,7 +673,6 @@ window.TumkurData = (() => {
         routeIds: directRoutes.filter((r) => r.id === "BLR-EV").map((r) => r.id)
       });
 
-      // Airavat Club Class AC
       const baseAiravat = Math.max(85, Math.round(35 + distanceKm * 2.65));
       const adjAiravat = applyConcession(baseAiravat, {
         shaktiEligible: false,
@@ -700,7 +691,6 @@ window.TumkurData = (() => {
         routeIds: directRoutes.filter((r) => r.id === "BLR-AC1").map((r) => r.id)
       });
 
-      // Ambaari Volvo AC Sleeper
       const baseAmbaari = Math.max(130, Math.round(55 + distanceKm * 3.35));
       const adjAmbaari = applyConcession(baseAmbaari, {
         shaktiEligible: false,
@@ -719,7 +709,6 @@ window.TumkurData = (() => {
         routeIds: directRoutes.filter((r) => r.id === "BLR-AMB").map((r) => r.id)
       });
 
-      // FlyBus AC (when Airport KIA is selected or served)
       if (involvesAirport || directRoutes.some((r) => r.id === "BLR-KIA")) {
         const baseFlybus = Math.max(200, Math.round(70 + distanceKm * 4.05));
         const adjFlybus = applyConcession(baseFlybus, {
@@ -774,12 +763,8 @@ window.TumkurData = (() => {
     const lng = p1[0] + (p2[0] - p1[0]) * t;
     const lat = p1[1] + (p2[1] - p1[1]) * t;
 
-    const lookStep = Math.min(route.path.length - 1, segIdx + 1);
-    const backStep = Math.max(0, segIdx);
     const heading =
-      direction >= 0
-        ? bearingDegrees(route.path[backStep], route.path[lookStep])
-        : bearingDegrees(route.path[lookStep], route.path[backStep]);
+      direction >= 0 ? bearingDegrees(p1, p2) : bearingDegrees(p2, p1);
 
     return { lng, lat, heading };
   }
@@ -842,6 +827,20 @@ window.TumkurData = (() => {
     return fleet;
   }
 
+  // Immediately re-project buses onto a newly road-snapped route
+  function repositionFleetOnRoutes(fleet, onlyRouteId = null) {
+    fleet.forEach((bus) => {
+      if (bus.isExternal) return;
+      if (onlyRouteId && bus.routeId !== onlyRouteId) return;
+      const route = ROUTES.find((r) => r.id === bus.routeId);
+      if (!route) return;
+      const pos = sampleRouteAt(route, bus.progress, bus.direction);
+      bus.lng = pos.lng;
+      bus.lat = pos.lat;
+      bus.heading = pos.heading;
+    });
+  }
+
   function spawnLiveBus(preferredRouteId = null) {
     const route =
       ROUTES.find((r) => r.id === preferredRouteId) ||
@@ -881,7 +880,16 @@ window.TumkurData = (() => {
 
   function stepFleet(fleet, dtSeconds) {
     fleet.forEach((bus) => {
-      if (bus.isExternal) return;
+      // Smooth interpolation for external Live API buses between 3-second polls
+      if (bus.isExternal) {
+        if (bus.targetLng !== undefined && bus.targetLat !== undefined) {
+          const lerp = Math.min(1, dtSeconds * 3.5);
+          bus.lng += (bus.targetLng - bus.lng) * lerp;
+          bus.lat += (bus.targetLat - bus.lat) * lerp;
+        }
+        return;
+      }
+
       const route = ROUTES.find((r) => r.id === bus.routeId);
       if (!route) return;
 
@@ -911,7 +919,7 @@ window.TumkurData = (() => {
 
       bus.speedKmh = Math.round(targetSpeed);
       const speedMps = (targetSpeed * 1000) / 3600;
-      const paceMultiplier = route.category === "bangalore" ? 3.2 : 2.0;
+      const paceMultiplier = route.category === "bangalore" ? 3.0 : 1.8;
       const deltaProgress = (bus.direction * speedMps * dtSeconds * paceMultiplier) / route.totalDist;
 
       bus.progress += deltaProgress;
@@ -931,20 +939,26 @@ window.TumkurData = (() => {
       bus.lat = pos.lat;
       bus.heading = pos.heading;
 
-      const stopsOrdered =
-        bus.direction > 0 ? route.stops : [...route.stops].reverse();
-      let bestStop = stopsOrdered[stopsOrdered.length - 1];
-      let minDist = Infinity;
-      for (const s of stopsOrdered) {
-        const d = haversineMeters([bus.lng, bus.lat], s.coord);
-        if (d > 90 && d < minDist) {
-          minDist = d;
+      // Pick the true next stop ahead along the bus's current travel direction
+      const curDist = bus.progress * route.totalDist;
+      let bestStop = route.stops[bus.direction > 0 ? route.stops.length - 1 : 0];
+      let bestAheadMeters = Infinity;
+
+      route.stops.forEach((s) => {
+        const stopDist = findNearestCumDist(route, s.coord);
+        const ahead = bus.direction > 0 ? stopDist - curDist : curDist - stopDist;
+        if (ahead > 70 && ahead < bestAheadMeters) {
+          bestAheadMeters = ahead;
           bestStop = s;
         }
-      }
+      });
+
       bus.nextStopId = bestStop.id;
       bus.nextStopName = bestStop.name;
-      bus.etaMin = Math.max(1, Math.round(minDist / Math.max(4.5, speedMps) / 60));
+      const etaDist = Number.isFinite(bestAheadMeters)
+        ? bestAheadMeters
+        : haversineMeters([bus.lng, bus.lat], bestStop.coord);
+      bus.etaMin = Math.max(1, Math.round(etaDist / Math.max(4.5, speedMps) / 60));
     });
   }
 
@@ -958,7 +972,9 @@ window.TumkurData = (() => {
     haversineMeters,
     bearingDegrees,
     snapRoutesToRealRoads,
+    fetchOsmTumkurStops,
     createInitialFleet,
+    repositionFleetOnRoutes,
     spawnLiveBus,
     stepFleet
   };
