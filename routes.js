@@ -1,11 +1,10 @@
 window.TumkurData = (() => {
-  // Centered on Tumakuru city core (between KSRTC Stand, Town Hall & University)
   const TUMKUR_CENTER = [77.1105, 13.3385];
 
   const LANDMARKS = {
     tumkur: { center: [77.1105, 13.3385], zoom: 13.4 },
     ksrtc: { center: [77.10252, 13.34116], zoom: 15.8 },
-    sit: { center: [77.12615, 13.32920], zoom: 15.8 },
+    sit: { center: [77.12716234, 13.33204874], zoom: 16.0 },
     mutt: { center: [77.14963, 13.32065], zoom: 15.4 },
     corridor: { center: [77.3500, 13.1550], zoom: 10.1 },
     nelamangala: { center: [77.39426, 13.09821], zoom: 13.6 },
@@ -13,7 +12,6 @@ window.TumkurData = (() => {
     airport: { center: [77.70660, 13.19860], zoom: 13.2 }
   };
 
-  // Kannada names for all verified Tumakuru & Bengaluru corridor stops
   const STOP_KANNADA = {
     ksrtc: "ತುಮಕೂರು ಕೆಎಸ್‌ಆರ್‌ಟಿಸಿ ನಿಲ್ದಾಣ",
     private_bs: "ತುಮಕೂರು ಖಾಸಗಿ ಬಸ್ ನಿಲ್ದಾಣ",
@@ -22,9 +20,9 @@ window.TumkurData = (() => {
     railway: "ತುಮಕೂರು ರೈಲ್ವೆ ನಿಲ್ದಾಣ",
     gubbi: "ಗುಬ್ಬಿ ಗೇಟ್ ವೃತ್ತ",
     heggere: "ಹೆಗ್ಗೆರೆ / ಎಸ್‌ಎಸ್‌ಎಂಸಿ",
-    univ: "ತುಮಕೂರು ವಿಶ್ವವಿದ್ಯಾಲಯ / ಆರ್ಟ್ಸ್ ಕಾಲೇಜು",
+    univ: "ತುಮಕೂರು ವಿಶ್ವವಿದ್ಯಾಲಯ ಬಸ್ ನಿಲ್ದಾಣ",
     sspuram: "ಎಸ್‌ಎಸ್ ಪುರಂ ಮುಖ್ಯ ರಸ್ತೆ",
-    sit: "ಎಸ್‌ಐಟಿ ಮುಖ್ಯ ದ್ವಾರ",
+    sit: "ಎಸ್‌ಐಟಿ ಮುಖ್ಯ ದ್ವಾರ ಬಸ್ ನಿಲ್ದಾಣ",
     sitback: "ಎಸ್‌ಐಟಿ ಹಿಂಬದಿ ದ್ವಾರ / ಪಾಲಿಟೆಕ್ನಿಕ್",
     batawadi: "ಬಟವಾಡಿ ಜಂಕ್ಷನ್",
     kyathsandra: "ಕ್ಯಾತ್ಸಂದ್ರ ವೃತ್ತ",
@@ -54,7 +52,7 @@ window.TumkurData = (() => {
     airport: "ಕೆಂಪೇಗೌಡ ವಿಮಾನ ನಿಲ್ದಾಣ (KIA)"
   };
 
-  // Master dictionary of OSM-verified stop coordinates [lng, lat]
+  // Verified stop coordinates [lng, lat] (pinned: true locks exact user-verified pins)
   const STOP_DEFS = {
     ksrtc: { id: "ksrtc", name: "Tumakuru KSRTC Bus Stand", coord: [77.10252, 13.34116], major: true },
     private_bs: { id: "private_bs", name: "Tumakuru Private Bus Stand", coord: [77.10118, 13.34250], major: false },
@@ -63,9 +61,21 @@ window.TumkurData = (() => {
     railway: { id: "railway", name: "Tumakuru Railway Station", coord: [77.10196, 13.33390], major: true },
     gubbi: { id: "gubbi", name: "Gubbi Gate Circle", coord: [77.08780, 13.34480], major: true },
     heggere: { id: "heggere", name: "Heggere / SSMC (B.H. Rd)", coord: [77.05964, 13.35278], major: true },
-    univ: { id: "univ", name: "Tumkur University / Arts College", coord: [77.11865, 13.33828], major: true },
+    univ: {
+      id: "univ",
+      name: "Tumkur University Bus Stop",
+      coord: [77.11982055469895, 13.33678950707134],
+      major: true,
+      pinned: true
+    },
     sspuram: { id: "sspuram", name: "SS Puram Main Road", coord: [77.11282, 13.33228], major: true },
-    sit: { id: "sit", name: "SIT Main Gate (B.H. Rd)", coord: [77.12615, 13.32920], major: true },
+    sit: {
+      id: "sit",
+      name: "SIT Main Gate Bus Stop",
+      coord: [77.12716234129778, 13.332048736778003],
+      major: true,
+      pinned: true
+    },
     sitback: { id: "sitback", name: "SIT Back Gate / Polytechnic", coord: [77.13180, 13.32604], major: false },
     batawadi: { id: "batawadi", name: "Batawadi Junction", coord: [77.13198, 13.33372], major: true },
     kyathsandra: { id: "kyathsandra", name: "Kyathsandra Circle", coord: [77.14623, 13.31369], major: true },
@@ -106,7 +116,11 @@ window.TumkurData = (() => {
     });
   }
 
-  // 15 Authentic Routes (9 Tumakuru KSRTC City/Suburban + 6 Bengaluru Corridors incl. 4 AC fleets)
+  function resolveCoords(ids) {
+    return ids.map((id) => [...STOP_DEFS[id].coord]);
+  }
+
+  // 15 Routes: each defines `stops` (Stops ON) and `directAnchors` (Stops OFF normal road path)
   const ROUTES = [
     {
       id: "201",
@@ -118,7 +132,8 @@ window.TumkurData = (() => {
       accent: "#fde047",
       busCount: 7,
       baseSpeed: 32,
-      stops: resolveStops(["heggere", "gubbi", "dist_hosp", "ksrtc", "univ", "sit", "kyathsandra"])
+      stops: resolveStops(["heggere", "gubbi", "dist_hosp", "ksrtc", "univ", "sit", "kyathsandra"]),
+      directAnchors: resolveCoords(["heggere", "kyathsandra"])
     },
     {
       id: "201E",
@@ -130,7 +145,8 @@ window.TumkurData = (() => {
       accent: "#a7f3d0",
       busCount: 4,
       baseSpeed: 30,
-      stops: resolveStops(["ksrtc", "univ", "sit", "kyathsandra", "mutt"])
+      stops: resolveStops(["ksrtc", "univ", "sit", "kyathsandra", "mutt"]),
+      directAnchors: resolveCoords(["ksrtc", "mutt"])
     },
     {
       id: "201B",
@@ -142,7 +158,8 @@ window.TumkurData = (() => {
       accent: "#ccfbf1",
       busCount: 4,
       baseSpeed: 30,
-      stops: resolveStops(["ksrtc", "townhall", "sspuram", "sitback", "kyathsandra"])
+      stops: resolveStops(["ksrtc", "townhall", "sspuram", "sitback", "kyathsandra"]),
+      directAnchors: resolveCoords(["ksrtc", "kyathsandra"])
     },
     {
       id: "202",
@@ -154,7 +171,8 @@ window.TumkurData = (() => {
       accent: "#1e293b",
       busCount: 6,
       baseSpeed: 33,
-      stops: resolveStops(["shettihalli", "sspuram", "ksrtc", "siragate", "yellapura"])
+      stops: resolveStops(["shettihalli", "sspuram", "ksrtc", "siragate", "yellapura"]),
+      directAnchors: resolveCoords(["shettihalli", "yellapura"])
     },
     {
       id: "203",
@@ -166,7 +184,8 @@ window.TumkurData = (() => {
       accent: "#cffafe",
       busCount: 5,
       baseSpeed: 34,
-      stops: resolveStops(["maralur", "railway", "townhall", "ksrtc", "siragate", "oorukere"])
+      stops: resolveStops(["maralur", "railway", "townhall", "ksrtc", "siragate", "oorukere"]),
+      directAnchors: resolveCoords(["maralur", "oorukere"])
     },
     {
       id: "204",
@@ -178,7 +197,8 @@ window.TumkurData = (() => {
       accent: "#ede9fe",
       busCount: 5,
       baseSpeed: 31,
-      stops: resolveStops(["gangasandra", "melekote", "townhall", "ksrtc", "univ", "batawadi", "belagumba"])
+      stops: resolveStops(["gangasandra", "melekote", "townhall", "ksrtc", "univ", "batawadi", "belagumba"]),
+      directAnchors: resolveCoords(["gangasandra", "belagumba"])
     },
     {
       id: "205",
@@ -190,7 +210,8 @@ window.TumkurData = (() => {
       accent: "#fbcfe8",
       busCount: 4,
       baseSpeed: 30,
-      stops: resolveStops(["ksrtc", "townhall", "railway", "upparahalli", "shettihalli"])
+      stops: resolveStops(["ksrtc", "townhall", "railway", "upparahalli", "shettihalli"]),
+      directAnchors: resolveCoords(["ksrtc", "shettihalli"])
     },
     {
       id: "206",
@@ -202,7 +223,8 @@ window.TumkurData = (() => {
       accent: "#bbf7d0",
       busCount: 4,
       baseSpeed: 34,
-      stops: resolveStops(["ksrtc", "townhall", "maralur", "gulur"])
+      stops: resolveStops(["ksrtc", "townhall", "maralur", "gulur"]),
+      directAnchors: resolveCoords(["ksrtc", "gulur"])
     },
     {
       id: "208",
@@ -214,7 +236,8 @@ window.TumkurData = (() => {
       accent: "#fef3c7",
       busCount: 3,
       baseSpeed: 42,
-      stops: resolveStops(["ksrtc", "dist_hosp", "gubbi", "heggere", "gubbitown"])
+      stops: resolveStops(["ksrtc", "dist_hosp", "gubbi", "heggere", "gubbitown"]),
+      directAnchors: resolveCoords(["ksrtc", "gubbitown"])
     },
     {
       id: "BLR-SRG",
@@ -229,7 +252,8 @@ window.TumkurData = (() => {
       stops: resolveStops([
         "ksrtc", "univ", "sit", "kyathsandra", "hirehalli",
         "dobbaspet", "nelamangala", "goragunte", "yeshwantpur", "majestic"
-      ])
+      ]),
+      directAnchors: resolveCoords(["ksrtc", "majestic"])
     },
     {
       id: "BLR-RJ",
@@ -244,7 +268,8 @@ window.TumkurData = (() => {
       stops: resolveStops([
         "ksrtc", "kyathsandra", "dobbaspet", "nelamangala",
         "goragunte", "hebbal", "krpuram"
-      ])
+      ]),
+      directAnchors: resolveCoords(["ksrtc", "hebbal", "krpuram"])
     },
     {
       id: "BLR-AC1",
@@ -259,7 +284,8 @@ window.TumkurData = (() => {
       stops: resolveStops([
         "ksrtc", "batawadi", "kyathsandra", "dobbaspet",
         "nelamangala", "goragunte", "yeshwantpur", "majestic"
-      ])
+      ]),
+      directAnchors: resolveCoords(["ksrtc", "majestic"])
     },
     {
       id: "BLR-EV",
@@ -274,7 +300,8 @@ window.TumkurData = (() => {
       stops: resolveStops([
         "ksrtc", "univ", "sit", "kyathsandra", "dobbaspet",
         "nelamangala", "goragunte", "yeshwantpur", "majestic"
-      ])
+      ]),
+      directAnchors: resolveCoords(["ksrtc", "majestic"])
     },
     {
       id: "BLR-AMB",
@@ -289,7 +316,8 @@ window.TumkurData = (() => {
       stops: resolveStops([
         "batawadi", "kyathsandra", "dobbaspet", "nelamangala",
         "goragunte", "shantinagar", "silkboard", "ecity"
-      ])
+      ]),
+      directAnchors: resolveCoords(["batawadi", "ecity"])
     },
     {
       id: "BLR-KIA",
@@ -304,11 +332,12 @@ window.TumkurData = (() => {
       stops: resolveStops([
         "ksrtc", "batawadi", "dobbaspet", "nelamangala",
         "goragunte", "hebbal", "airport"
-      ])
+      ]),
+      directAnchors: resolveCoords(["ksrtc", "hebbal", "airport"])
     }
   ];
 
-  // Collect all unique stops with serving route IDs
+  // Collect all unique curated stops with serving route IDs
   const stopMap = new Map();
   ROUTES.forEach((route) => {
     route.stops.forEach((s) => {
@@ -322,7 +351,6 @@ window.TumkurData = (() => {
     });
   });
 
-  // Include Private Bus Stand right next to KSRTC
   if (!stopMap.has("private_bs")) {
     const pbs = STOP_DEFS.private_bs;
     stopMap.set("private_bs", {
@@ -379,28 +407,46 @@ window.TumkurData = (() => {
     route.totalDist = Math.max(1, route.cumDist[route.cumDist.length - 1]);
   }
 
+  let routeStopsEnabled = true;
+
   ROUTES.forEach((route) => {
-    route.path = route.stops.map((s) => s.coord);
+    route.stopPath = route.stops.map((s) => s.coord);
+    route.directPath = route.directAnchors.map((c) => [...c]);
+    route.path = route.stopPath;
     route.snapped = false;
     recomputeRouteMetrics(route);
   });
 
-  // Purge stale old caches so old wrong paths never load again
-  const CACHE_KEY = "tumkur_blr_osrm_paths_v4_verified";
+  /**
+   * Switches every route between stop-by-stop paths (Stops ON)
+   * and direct normal highway/road paths (Stops OFF).
+   */
+  function setRouteStopMode(enabled) {
+    routeStopsEnabled = Boolean(enabled);
+    ROUTES.forEach((route) => {
+      route.path = routeStopsEnabled ? route.stopPath : route.directPath;
+      recomputeRouteMetrics(route);
+    });
+  }
+
+  // Clear older caches so new dual-path & exact pinned stops take effect cleanly
+  const CACHE_KEY = "tumkur_blr_osrm_paths_v5_dual";
   try {
     localStorage.removeItem("tumkur_blr_osrm_paths_v1");
     localStorage.removeItem("tumkur_blr_osrm_paths_v2");
+    localStorage.removeItem("tumkur_blr_osrm_paths_v4_verified");
+    localStorage.removeItem("tumkur_osm_bus_stops_v1");
   } catch {
     // Ignore storage errors
   }
 
-  // Dual OSRM endpoints (primary + OSM Germany backup) with continue_straight=true
   const OSRM_BASES = [
     "https://router.project-osrm.org/route/v1/driving",
     "https://routing.openstreetmap.de/routed-car/route/v1/driving"
   ];
 
-  async function fetchRoadGeometry(coordStr) {
+  async function fetchRoadGeometry(coordArray) {
+    const coordStr = coordArray.map((c) => `${c[0]},${c[1]}`).join(";");
     for (const base of OSRM_BASES) {
       try {
         const url = `${base}/${coordStr}?overview=full&geometries=geojson&continue_straight=true`;
@@ -413,7 +459,7 @@ window.TumkurData = (() => {
           return { coords, waypoints };
         }
       } catch {
-        // Try backup routing server
+        // Try backup server
       }
     }
     return null;
@@ -431,8 +477,16 @@ window.TumkurData = (() => {
 
     for (const route of ROUTES) {
       const cached = cache[route.id];
-      if (cached && Array.isArray(cached.coords) && cached.coords.length > route.stops.length) {
-        route.path = cached.coords;
+      if (
+        cached &&
+        Array.isArray(cached.stopCoords) &&
+        cached.stopCoords.length > 2 &&
+        Array.isArray(cached.directCoords) &&
+        cached.directCoords.length > 2
+      ) {
+        route.stopPath = cached.stopCoords;
+        route.directPath = cached.directCoords;
+        route.path = routeStopsEnabled ? route.stopPath : route.directPath;
         route.snapped = true;
         recomputeRouteMetrics(route);
         snappedCount++;
@@ -440,28 +494,40 @@ window.TumkurData = (() => {
         continue;
       }
 
-      const coordStr = route.stops.map((s) => `${s.coord[0]},${s.coord[1]}`).join(";");
-      const result = await fetchRoadGeometry(coordStr);
+      const stopResult = await fetchRoadGeometry(route.stops.map((s) => s.coord));
+      await new Promise((r) => setTimeout(r, 140));
+      const directResult = await fetchRoadGeometry(route.directAnchors);
 
-      if (result) {
-        route.path = result.coords;
+      if (stopResult || directResult) {
+        if (stopResult) {
+          route.stopPath = stopResult.coords;
+          // Snap non-pinned stops slightly onto carriageway; NEVER overwrite user-pinned stops
+          stopResult.waypoints.forEach((wp, idx) => {
+            const stop = route.stops[idx];
+            if (stop && !stop.pinned && Array.isArray(wp.location)) {
+              const shift = haversineMeters(stop.coord, wp.location);
+              if (shift < 140) {
+                stop.coord = wp.location;
+                const master = STOPS_BY_ID.get(stop.id);
+                if (master && !master.pinned) master.coord = wp.location;
+              }
+            }
+          });
+        }
+        if (directResult) {
+          route.directPath = directResult.coords;
+        } else if (stopResult) {
+          route.directPath = stopResult.coords;
+        }
+
+        route.path = routeStopsEnabled ? route.stopPath : route.directPath;
         route.snapped = true;
         recomputeRouteMetrics(route);
 
-        // Snap stop coordinates cleanly to the actual road carriageway if within 180m
-        result.waypoints.forEach((wp, idx) => {
-          const stop = route.stops[idx];
-          if (stop && Array.isArray(wp.location)) {
-            const shift = haversineMeters(stop.coord, wp.location);
-            if (shift < 180) {
-              stop.coord = wp.location;
-              const master = STOPS_BY_ID.get(stop.id);
-              if (master) master.coord = wp.location;
-            }
-          }
-        });
-
-        cache[route.id] = { coords: result.coords };
+        cache[route.id] = {
+          stopCoords: route.stopPath,
+          directCoords: route.directPath
+        };
         try {
           localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
         } catch {
@@ -471,67 +537,10 @@ window.TumkurData = (() => {
         if (onRouteSnapped) onRouteSnapped(route, snappedCount, ROUTES.length);
       }
 
-      await new Promise((r) => setTimeout(r, 240));
+      await new Promise((r) => setTimeout(r, 160));
     }
 
     return snappedCount;
-  }
-
-  /**
-   * Optional async lookup of real OpenStreetMap bus stops (highway=bus_stop)
-   * across Tumakuru city via Overpass API, cached for 24h.
-   */
-  const OSM_STOPS_CACHE_KEY = "tumkur_osm_bus_stops_v1";
-
-  async function fetchOsmTumkurStops() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(OSM_STOPS_CACHE_KEY) || "null");
-      if (saved && Date.now() - saved.ts < 86400000 && Array.isArray(saved.stops)) {
-        return saved.stops;
-      }
-    } catch {
-      // Ignore cache read error
-    }
-
-    const query = `[out:json][timeout:12];node["highway"="bus_stop"](13.29,77.05,13.40,77.16);out body;`;
-    try {
-      const res = await fetch(
-        `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`
-      );
-      if (!res.ok) return [];
-      const data = await res.json();
-      const osmStops = [];
-      (data.elements || []).forEach((el) => {
-        if (!el.lat || !el.lon) return;
-        const name = el.tags?.name || el.tags?.["name:en"];
-        if (!name) return;
-        // Skip duplicates within 140m of our curated core stops
-        const nearCore = STOPS.some(
-          (s) => haversineMeters(s.coord, [el.lon, el.lat]) < 140
-        );
-        if (nearCore) return;
-        osmStops.push({
-          id: `osm-${el.id}`,
-          name,
-          kn: el.tags?.["name:kn"] || name,
-          coord: [el.lon, el.lat],
-          major: false,
-          routeIds: []
-        });
-      });
-
-      try {
-        localStorage.setItem(
-          OSM_STOPS_CACHE_KEY,
-          JSON.stringify({ ts: Date.now(), stops: osmStops })
-        );
-      } catch {
-        // Ignore storage error
-      }
-      return osmStops;
-    } catch {
-      return [];
-    }
   }
 
   function findNearestCumDist(route, coord) {
@@ -762,9 +771,7 @@ window.TumkurData = (() => {
 
     const lng = p1[0] + (p2[0] - p1[0]) * t;
     const lat = p1[1] + (p2[1] - p1[1]) * t;
-
-    const heading =
-      direction >= 0 ? bearingDegrees(p1, p2) : bearingDegrees(p2, p1);
+    const heading = direction >= 0 ? bearingDegrees(p1, p2) : bearingDegrees(p2, p1);
 
     return { lng, lat, heading };
   }
@@ -827,7 +834,6 @@ window.TumkurData = (() => {
     return fleet;
   }
 
-  // Immediately re-project buses onto a newly road-snapped route
   function repositionFleetOnRoutes(fleet, onlyRouteId = null) {
     fleet.forEach((bus) => {
       if (bus.isExternal) return;
@@ -838,6 +844,10 @@ window.TumkurData = (() => {
       bus.lng = pos.lng;
       bus.lat = pos.lat;
       bus.heading = pos.heading;
+      if (!routeStopsEnabled) {
+        bus.dwellTimer = 0;
+        bus.braking = false;
+      }
     });
   }
 
@@ -848,8 +858,9 @@ window.TumkurData = (() => {
     const direction = Math.random() < 0.55 ? 1 : -1;
     const progress = direction === 1 ? 0.01 : 0.99;
     const pos = sampleRouteAt(route, progress, direction);
-    const nextStopObj =
-      route.stops[direction > 0 ? 1 : route.stops.length - 2] || route.stops[0];
+    const nextStopObj = routeStopsEnabled
+      ? route.stops[direction > 0 ? 1 : route.stops.length - 2] || route.stops[0]
+      : route.stops[direction > 0 ? route.stops.length - 1 : 0];
 
     return {
       id: `live-dispatch-${route.id}-${liveSpawnSeq++}`,
@@ -878,9 +889,8 @@ window.TumkurData = (() => {
     };
   }
 
-  function stepFleet(fleet, dtSeconds) {
+  function stepFleet(fleet, dtSeconds, stopsEnabled = true) {
     fleet.forEach((bus) => {
-      // Smooth interpolation for external Live API buses between 3-second polls
       if (bus.isExternal) {
         if (bus.targetLng !== undefined && bus.targetLat !== undefined) {
           const lerp = Math.min(1, dtSeconds * 3.5);
@@ -893,6 +903,12 @@ window.TumkurData = (() => {
       const route = ROUTES.find((r) => r.id === bus.routeId);
       if (!route) return;
 
+      // When Stops are OFF, never hold a bus at an intermediate stop
+      if (!stopsEnabled && bus.dwellTimer > 0 && bus.progress > 0.01 && bus.progress < 0.99) {
+        bus.dwellTimer = 0;
+        bus.braking = false;
+      }
+
       if (bus.dwellTimer > 0) {
         bus.dwellTimer -= dtSeconds;
         bus.speedKmh = 0;
@@ -903,19 +919,24 @@ window.TumkurData = (() => {
       const jitter = Math.sin(performance.now() * 0.001 + bus.progress * 22) * 4;
       let targetSpeed = Math.max(18, bus.baseSpeedKmh + jitter);
 
-      let nearestStopDist = Infinity;
-      route.stops.forEach((s) => {
-        const d = haversineMeters([bus.lng, bus.lat], s.coord);
-        if (d < nearestStopDist) nearestStopDist = d;
-      });
+      if (stopsEnabled) {
+        let nearestStopDist = Infinity;
+        route.stops.forEach((s) => {
+          const d = haversineMeters([bus.lng, bus.lat], s.coord);
+          if (d < nearestStopDist) nearestStopDist = d;
+        });
 
-      bus.braking = nearestStopDist < 130;
-      if (nearestStopDist < 55 && Math.random() < 0.012) {
-        bus.dwellTimer = 2.4;
-        bus.speedKmh = 0;
-        return;
+        bus.braking = nearestStopDist < 130;
+        if (nearestStopDist < 55 && Math.random() < 0.012) {
+          bus.dwellTimer = 2.4;
+          bus.speedKmh = 0;
+          return;
+        }
+        if (bus.braking) targetSpeed *= 0.55;
+      } else {
+        // Direct normal route: continuous cruising without intermediate stop braking
+        bus.braking = false;
       }
-      if (bus.braking) targetSpeed *= 0.55;
 
       bus.speedKmh = Math.round(targetSpeed);
       const speedMps = (targetSpeed * 1000) / 3600;
@@ -927,11 +948,11 @@ window.TumkurData = (() => {
       if (bus.progress >= 1) {
         bus.progress = 1;
         bus.direction = -1;
-        bus.dwellTimer = 2.5;
+        bus.dwellTimer = stopsEnabled ? 2.5 : 0.8;
       } else if (bus.progress <= 0) {
         bus.progress = 0;
         bus.direction = 1;
-        bus.dwellTimer = 2.5;
+        bus.dwellTimer = stopsEnabled ? 2.5 : 0.8;
       }
 
       const pos = sampleRouteAt(route, bus.progress, bus.direction);
@@ -939,26 +960,38 @@ window.TumkurData = (() => {
       bus.lat = pos.lat;
       bus.heading = pos.heading;
 
-      // Pick the true next stop ahead along the bus's current travel direction
-      const curDist = bus.progress * route.totalDist;
-      let bestStop = route.stops[bus.direction > 0 ? route.stops.length - 1 : 0];
-      let bestAheadMeters = Infinity;
+      const terminalStop = route.stops[bus.direction > 0 ? route.stops.length - 1 : 0];
 
-      route.stops.forEach((s) => {
-        const stopDist = findNearestCumDist(route, s.coord);
-        const ahead = bus.direction > 0 ? stopDist - curDist : curDist - stopDist;
-        if (ahead > 70 && ahead < bestAheadMeters) {
-          bestAheadMeters = ahead;
-          bestStop = s;
-        }
-      });
+      if (!stopsEnabled) {
+        // Show destination terminal directly instead of intermediate stops
+        const remainingMeters =
+          bus.direction > 0
+            ? (1 - bus.progress) * route.totalDist
+            : bus.progress * route.totalDist;
+        bus.nextStopId = terminalStop.id;
+        bus.nextStopName = terminalStop.name;
+        bus.etaMin = Math.max(1, Math.round(remainingMeters / Math.max(4.5, speedMps) / 60));
+      } else {
+        const curDist = bus.progress * route.totalDist;
+        let bestStop = terminalStop;
+        let bestAheadMeters = Infinity;
 
-      bus.nextStopId = bestStop.id;
-      bus.nextStopName = bestStop.name;
-      const etaDist = Number.isFinite(bestAheadMeters)
-        ? bestAheadMeters
-        : haversineMeters([bus.lng, bus.lat], bestStop.coord);
-      bus.etaMin = Math.max(1, Math.round(etaDist / Math.max(4.5, speedMps) / 60));
+        route.stops.forEach((s) => {
+          const stopDist = findNearestCumDist(route, s.coord);
+          const ahead = bus.direction > 0 ? stopDist - curDist : curDist - stopDist;
+          if (ahead > 70 && ahead < bestAheadMeters) {
+            bestAheadMeters = ahead;
+            bestStop = s;
+          }
+        });
+
+        bus.nextStopId = bestStop.id;
+        bus.nextStopName = bestStop.name;
+        const etaDist = Number.isFinite(bestAheadMeters)
+          ? bestAheadMeters
+          : haversineMeters([bus.lng, bus.lat], bestStop.coord);
+        bus.etaMin = Math.max(1, Math.round(etaDist / Math.max(4.5, speedMps) / 60));
+      }
     });
   }
 
@@ -971,8 +1004,8 @@ window.TumkurData = (() => {
     estimateFares,
     haversineMeters,
     bearingDegrees,
+    setRouteStopMode,
     snapRoutesToRealRoads,
-    fetchOsmTumkurStops,
     createInitialFleet,
     repositionFleetOnRoutes,
     spawnLiveBus,
