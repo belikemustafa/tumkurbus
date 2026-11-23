@@ -60,7 +60,6 @@
     const busCoord = [bus.lng, bus.lat];
     const params = new URLSearchParams({ api: "1", travelmode: "driving" });
 
-    // If user already tapped Locate Me, pass exact GPS; otherwise omit origin so Google Maps uses live "Your location"
     if (myLocationCoord) {
       params.set("origin", fmtLatLng(myLocationCoord));
     }
@@ -70,7 +69,6 @@
       const destStop = orderedStops[orderedStops.length - 1];
       params.set("destination", fmtLatLng(destStop.coord));
 
-      // Place the live bus's current position first, followed by key stops along the corridor (<= 8 waypoints)
       const waypoints = [busCoord];
       const mids = orderedStops.slice(0, -1).map((s) => s.coord);
       const step = Math.max(1, Math.ceil(mids.length / 5));
@@ -817,7 +815,7 @@
     }
   }
 
-  // --- Hideable Drawer ---
+  // --- Hideable Drawer & Native Touch Swipe-Down Gesture ---
   function openDrawer(tabName = null) {
     drawerOpen = true;
     document.getElementById("drawer").classList.remove("hidden-drawer");
@@ -833,6 +831,111 @@
     drawerOpen = false;
     document.getElementById("drawer").classList.add("hidden-drawer");
     document.getElementById("bottomDock").classList.remove("hidden");
+  }
+
+  function initMobileDrawerSwipe() {
+    const drawer = document.getElementById("drawer");
+    const dragZone = drawer ? drawer.querySelector(".drawer-top") : null;
+    if (!drawer || !dragZone) return;
+
+    let startY = 0;
+    let startX = 0;
+    let currentDeltaY = 0;
+    let isDragging = false;
+    let prevY = 0;
+    let prevTime = 0;
+    let lastY = 0;
+    let lastTime = 0;
+    let suppressGripClickUntil = 0;
+
+    const grip = document.getElementById("drawerGrip");
+    if (grip) {
+      grip.addEventListener(
+        "click",
+        (e) => {
+          if (performance.now() < suppressGripClickUntil) {
+            e.stopImmediatePropagation();
+          }
+        },
+        true
+      );
+    }
+
+    dragZone.addEventListener(
+      "touchstart",
+      (e) => {
+        if (window.innerWidth > 820 || !drawerOpen || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        startY = t.clientY;
+        startX = t.clientX;
+        prevY = lastY = t.clientY;
+        prevTime = lastTime = performance.now();
+        currentDeltaY = 0;
+        isDragging = false;
+      },
+      { passive: true }
+    );
+
+    dragZone.addEventListener(
+      "touchmove",
+      (e) => {
+        if (window.innerWidth > 820 || !drawerOpen || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        const dy = t.clientY - startY;
+        const dx = t.clientX - startX;
+
+        if (!isDragging) {
+          if (Math.abs(dy) > 6 && Math.abs(dy) > Math.abs(dx)) {
+            isDragging = true;
+            drawer.classList.add("dragging");
+          } else {
+            return;
+          }
+        }
+
+        e.preventDefault();
+
+        const now = performance.now();
+        if (now - lastTime > 16) {
+          prevY = lastY;
+          prevTime = lastTime;
+          lastY = t.clientY;
+          lastTime = now;
+        }
+
+        currentDeltaY = dy;
+        const visualY = dy >= 0 ? dy : Math.max(-18, dy * 0.16);
+        drawer.style.transform = `translateY(${visualY}px)`;
+      },
+      { passive: false }
+    );
+
+    const finishDrag = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      suppressGripClickUntil = performance.now() + 260;
+
+      const now = performance.now();
+      const recentMove = now - lastTime < 120;
+      const velocityPxPerMs = recentMove
+        ? (lastY - prevY) / Math.max(1, lastTime - prevTime)
+        : 0;
+
+      const sheetHeight = drawer.offsetHeight || 420;
+      const shouldClose =
+        currentDeltaY > Math.min(130, sheetHeight * 0.28) ||
+        (currentDeltaY > 36 && velocityPxPerMs > 0.45);
+
+      drawer.classList.remove("dragging");
+      drawer.style.transform = "";
+
+      if (shouldClose) {
+        hideDrawer();
+      }
+    };
+
+    dragZone.addEventListener("touchend", finishDrag, { passive: true });
+    dragZone.addEventListener("touchcancel", finishDrag, { passive: true });
   }
 
   function switchTab(name) {
@@ -1770,6 +1873,7 @@
   on("btnOpenDrawerPlan", "click", () => openDrawer("fares"));
   on("btnHideDrawer", "click", hideDrawer);
   on("drawerGrip", "click", hideDrawer);
+  initMobileDrawerSwipe();
 
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
