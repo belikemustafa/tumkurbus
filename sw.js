@@ -1,12 +1,11 @@
-const CACHE_NAME = "tumkur-bus-pwa-v11";
+const CACHE_NAME = "tumkur-bus-pwa-v13";
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=11",
-  "./routes.js?v=11",
-  "./features.js?v=11",
-  "./bus3d.js?v=11",
-  "./app.js?v=11",
+  "./style.css?v=13",
+  "./routes.js?v=13",
+  "./features.js?v=13",
+  "./app.js?v=13",
   "./manifest.json",
   "./icon.svg"
 ];
@@ -29,7 +28,6 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
 
-  // Network-first for same-origin app assets with offline cache fallback
   if (url.origin === self.location.origin) {
     event.respondWith(
       fetch(event.request)
