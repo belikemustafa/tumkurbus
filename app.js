@@ -14,7 +14,7 @@
   }
 
   if (!window.TumkurData) {
-    showStatusError("routes.js failed to load. Make sure routes.js is in the same folder as index.html.");
+    showStatusError("routes.js failed to load. Ensure routes.js is in the same folder as index.html.");
     return;
   }
 
@@ -26,19 +26,18 @@
     haversineMeters,
     bearingDegrees,
     snapRoutesToRealRoads,
+    fetchOsmTumkurStops,
     createInitialFleet,
+    repositionFleetOnRoutes,
     spawnLiveBus,
     stepFleet
   } = window.TumkurData;
 
-  // Safe fallbacks in case an older routes.js was cached
   const getStopById =
     window.TumkurData.getStopById ||
     ((id) => STOPS.find((s) => s.id === id) || null);
 
-  const estimateFares =
-    window.TumkurData.estimateFares ||
-    (() => null);
+  const estimateFares = window.TumkurData.estimateFares || (() => null);
 
   const MAP_STYLES = {
     street: {
@@ -89,6 +88,7 @@
 
   // Core App State
   let fleet = createInitialFleet();
+  let extraOsmStops = [];
   let selectedRouteFilter = "ALL";
   let selectedBusId = null;
   let followBusActive = false;
@@ -122,7 +122,6 @@
 
   const mapEl = document.getElementById("map");
 
-  // Lazy-create the 3D Bus Inspector only when visible so hidden canvas never fails WebGL
   function getInspector3D() {
     if (inspector3D) return inspector3D;
     if (!window.Bus3D || !window.THREE) return null;
@@ -137,7 +136,6 @@
     }
   }
 
-  // Language formatting helpers for Kannada + English toggle
   function formatStopText(stop) {
     if (!stop) return "";
     const kn = stop.kn || stop.name;
@@ -148,13 +146,11 @@
 
   function formatStopPinHtml(stop) {
     const kn = stop.kn || stop.name;
-    if (stopLangMode === "kn") {
-      return `<span class="stop-kn">${kn}</span>`;
-    }
-    if (stopLangMode === "en") {
-      return `<span class="stop-en">${stop.name}</span>`;
-    }
-    return `<span class="stop-kn">${kn}</span><span class="stop-en">${stop.name}</span>`;
+    if (stopLangMode === "kn") return `<span class="stop-kn">${kn}</span>`;
+    if (stopLangMode === "en") return `<span class="stop-en">${stop.name}</span>`;
+    return kn === stop.name
+      ? `<span class="stop-en">${stop.name}</span>`
+      : `<span class="stop-kn">${kn}</span><span class="stop-en">${stop.name}</span>`;
   }
 
   function getBusNextStopDisplay(bus) {
@@ -272,7 +268,6 @@
       }
     });
 
-    // Add 3D buses layer safely (keeps working with 2D badges if Three.js ever fails)
     if (window.Bus3D && window.THREE) {
       try {
         const busLayer = window.Bus3D.createMapBusLayer({
@@ -295,7 +290,7 @@
     if (!map || !mapEl) return;
     const z = map.getZoom();
     mapEl.classList.toggle("show-major-stops", z >= 12.2);
-    mapEl.classList.toggle("show-all-stops", z >= 13.7);
+    mapEl.classList.toggle("show-all-stops", z >= 13.8);
   }
 
   function applyRouteLayerFilter() {
@@ -306,8 +301,8 @@
 
     if (selectedBus) {
       filter = ["==", ["get", "id"], selectedBus.routeId];
-      map.setPaintProperty("routes-core", "line-width", 5.2);
-      map.setPaintProperty("routes-casing", "line-width", 8.0);
+      map.setPaintProperty("routes-core", "line-width", 5.4);
+      map.setPaintProperty("routes-casing", "line-width", 8.2);
     } else {
       map.setPaintProperty("routes-core", "line-width", 3.6);
       map.setPaintProperty("routes-casing", "line-width", currentStyleName === "satellite" ? 6.5 : 5.5);
@@ -339,7 +334,9 @@
   function initStopMarkers() {
     if (!map) return;
     stopMarkerEntries.forEach(({ marker }) => marker.remove());
-    stopMarkerEntries = STOPS.map((stop) => {
+
+    const allMapStops = [...STOPS, ...extraOsmStops];
+    stopMarkerEntries = allMapStops.map((stop) => {
       const el = document.createElement("div");
       el.className = `bus-stop-pin ${stop.major ? "major" : ""}`;
       el.innerHTML = `<span class="bus-stop-dot">B</span><span class="bus-stop-label">${formatStopPinHtml(stop)}</span>`;
@@ -355,10 +352,13 @@
           return;
         }
         const stopSel = document.getElementById("stopSelect");
-        if (stopSel) stopSel.value = stop.id;
-        renderArrivalBoard();
-        switchTab("stops");
-        showToast(`${formatStopText(stop)} · Routes: ${(stop.routeIds || []).join(", ") || "Local"}`);
+        if (stopSel && getStopById(stop.id)) {
+          stopSel.value = stop.id;
+          renderArrivalBoard();
+          switchTab("stops");
+        }
+        const rList = (stop.routeIds || []).length ? stop.routeIds.join(", ") : "Tumakuru Local Stop";
+        showToast(`${formatStopText(stop)} · ${rList}`);
       });
 
       const marker = new maplibregl.Marker({ element: el, anchor: "left" })
@@ -368,7 +368,15 @@
       return { stop, el, marker };
     });
 
-    syncStopMarkerHighlight(null);
+    const activeBus = selectedBusId ? fleet.find((b) => b.id === selectedBusId) : null;
+    syncStopMarkerHighlight(activeBus ? activeBus.routeId : null);
+  }
+
+  function syncStopMarkerPositions() {
+    stopMarkerEntries.forEach(({ stop, marker }) => {
+      const master = getStopById(stop.id);
+      if (master) marker.setLngLat(master.coord);
+    });
   }
 
   function syncStopMarkerHighlight(activeRouteId) {
@@ -561,7 +569,7 @@
         : `<span>Transfer via KSRTC Stand</span>`;
 
     summaryEl.innerHTML = `
-      <span>Approx. Distance: <strong>${est.distanceKm} km</strong></span>
+      <span>Road Distance: <strong>${est.distanceKm} km</strong></span>
       ${directBadge}
     `;
 
@@ -694,7 +702,7 @@
         osc.stop(now + idx * 0.16 + 0.3);
       });
     } catch {
-      // Ignore audio restrictions
+      // Ignore audio block
     }
   }
 
@@ -926,6 +934,9 @@
   }
 
   function renderRoutesTab() {
+    const tabBtnRoutes = document.getElementById("tabBtnRoutes");
+    if (tabBtnRoutes) tabBtnRoutes.textContent = `Routes (${ROUTES.length})`;
+
     const container = document.getElementById("routesList");
     if (!container) return;
     container.innerHTML = ROUTES.map((r) => {
@@ -1019,7 +1030,12 @@
 
     const stop = getStopById(stopSel.value) || STOPS[0];
 
-    const arrivals = fleet
+    // Prefer buses on routes that actually serve this stop
+    const servingSet = new Set(stop.routeIds || []);
+    const candidates = fleet.filter((b) => servingSet.size === 0 || servingSet.has(b.routeId));
+    const pool = candidates.length > 0 ? candidates : fleet;
+
+    const arrivals = pool
       .map((bus) => {
         const distM = haversineMeters([bus.lng, bus.lat], stop.coord);
         const speedMps = Math.max(5, ((bus.speedKmh || 28) * 1000) / 3600);
@@ -1079,7 +1095,7 @@
     btn.textContent = followBusActive ? "Stop Following Bus" : "Follow Bus on Map";
   }
 
-  // --- Bind UI Controls ---
+  // --- UI Controls ---
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
@@ -1110,11 +1126,7 @@
   on("btnLangToggle", "click", (e) => {
     const order = ["both", "kn", "en"];
     stopLangMode = order[(order.indexOf(stopLangMode) + 1) % order.length];
-    const labels = {
-      both: "EN + ಕನ್ನಡ",
-      kn: "ಕನ್ನಡ Only",
-      en: "English Only"
-    };
+    const labels = { both: "EN + ಕನ್ನಡ", kn: "ಕನ್ನಡ Only", en: "English Only" };
     e.target.textContent = labels[stopLangMode];
     e.target.classList.toggle("active", stopLangMode !== "en");
     refreshStopLanguageUI();
@@ -1185,7 +1197,6 @@
     document.getElementById("alertModal").classList.remove("hidden");
   });
 
-  // Pass-By Alert Modal Controls
   on("btnOpenAlertModal", "click", () => {
     if (!alertConfig.active && selectedRouteFilter) {
       const sel = document.getElementById("alertFleetSelect");
@@ -1258,27 +1269,40 @@
         fleet = data.map((item, idx) => {
           const id = String(item.id || `live-${idx}`);
           const prev = existingMap.get(id);
-          const r = ROUTES.find((rt) => rt.id === item.routeId) || ROUTES[0];
+          const matchedRoute = ROUTES.find((rt) => rt.id === String(item.routeId));
+          const lat = Number(item.lat);
+          const lng = Number(item.lng);
           const isNewBus = !prev;
           if (isNewBus) newlyLiveCount++;
 
+          // Derive heading smoothly from previous fix if feed omits heading
+          let heading = Number(item.heading);
+          if (Number.isNaN(heading)) {
+            heading =
+              prev && haversineMeters([prev.lng, prev.lat], [lng, lat]) > 5
+                ? bearingDegrees([prev.lng, prev.lat], [lng, lat])
+                : prev?.heading || 0;
+          }
+
           return {
             id,
-            routeId: r.id,
-            category: r.category,
-            isAC: item.isAC !== undefined ? Boolean(item.isAC) : Boolean(r.isAC),
-            color: r.color,
-            accent: r.accent,
-            livery: item.livery || r.livery,
+            routeId: matchedRoute ? matchedRoute.id : String(item.routeId || "LIVE"),
+            category: matchedRoute ? matchedRoute.category : "city",
+            isAC: item.isAC !== undefined ? Boolean(item.isAC) : Boolean(matchedRoute?.isAC),
+            color: matchedRoute ? matchedRoute.color : "#2563eb",
+            accent: matchedRoute ? matchedRoute.accent : "#dbeafe",
+            livery: item.livery || matchedRoute?.livery || "Live Telemetry",
             reg: item.reg || `LIVE-${idx + 1}`,
-            lng: Number(item.lng),
-            lat: Number(item.lat),
-            heading: Number(item.heading) || 0,
+            lng: prev ? prev.lng : lng,
+            lat: prev ? prev.lat : lat,
+            targetLng: lng,
+            targetLat: lat,
+            heading,
             speedKmh: Math.round(Number(item.speed) || 0),
             braking: (Number(item.speed) || 0) < 5,
             crowd: item.crowd || "Live",
             nextStopId: null,
-            nextStopName: item.nextStop || "Live Telemetry",
+            nextStopName: item.nextStop || "Live GPS Feed",
             etaMin: item.etaMin || 2,
             isExternal: true,
             isNewUntil: isNewBus ? now + 9000 : prev.isNewUntil || 0
@@ -1333,6 +1357,8 @@
             reg: "MY-GPS-LIVE",
             lng: longitude,
             lat: latitude,
+            targetLng: longitude,
+            targetLat: latitude,
             heading: heading || 0,
             speedKmh: Math.round((speed || 0) * 3.6),
             braking: false,
@@ -1345,8 +1371,8 @@
           };
           fleet.unshift(myBus);
         } else {
-          myBus.lng = longitude;
-          myBus.lat = latitude;
+          myBus.targetLng = longitude;
+          myBus.targetLat = latitude;
           if (heading != null && !Number.isNaN(heading)) myBus.heading = heading;
           myBus.speedKmh = Math.round((speed || 0) * 3.6);
         }
@@ -1371,7 +1397,7 @@
     }
     fleet = createInitialFleet();
     clearSelectedBus();
-    updateFleetCounters("Auto-updating live (Tumakuru & Bengaluru)");
+    updateFleetCounters("Road-Aligned Live Fleet (Tumakuru & Bengaluru)");
     renderRoutePills();
     renderFleetList();
     renderRoutesTab();
@@ -1380,28 +1406,24 @@
     showToast("Switched back to auto-updating fleet.");
   });
 
-  // =========================================================================
-  // 1. BOOT FLEET UI IMMEDIATELY (Independent of Map / WebGL!)
-  // =========================================================================
-  updateFleetCounters("Auto-updating live...");
+  // 1. Boot UI immediately
+  updateFleetCounters("Aligning verified roads...");
   initAlertModalOptions();
   renderRoutePills();
   renderFleetList();
   renderRoutesTab();
   initStopBoardAndFares();
 
-  // =========================================================================
-  // 2. INITIALIZE MAP & 3D LAYER SAFELY
-  // =========================================================================
+  // 2. Initialize Map & 3D Buses safely
   if (typeof maplibregl === "undefined") {
-    showStatusError("MapLibre library failed to load (check internet connection or CDN block). Fleet list is still active.");
+    showStatusError("MapLibre library failed to load. Check internet connection.");
   } else {
     try {
       map = new maplibregl.Map({
         container: "map",
         style: MAP_STYLES.street,
         center: TUMKUR_CENTER,
-        zoom: 13.5,
+        zoom: 13.4,
         pitch: 0,
         maxPitch: 0,
         bearing: 0,
@@ -1444,15 +1466,23 @@
 
       initStopMarkers();
       syncBusMarkers();
+
+      // Pull additional real mapped OpenStreetMap bus stops across Tumakuru
+      if (typeof fetchOsmTumkurStops === "function") {
+        fetchOsmTumkurStops().then((osmStops) => {
+          if (osmStops && osmStops.length > 0) {
+            extraOsmStops = osmStops;
+            initStopMarkers();
+          }
+        });
+      }
     } catch (err) {
       console.error("Map init error:", err);
       showStatusError(`Map WebGL error: ${err.message}`);
     }
   }
 
-  // =========================================================================
-  // 3. AUTO-DISPATCH & MAIN ANIMATION LOOP
-  // =========================================================================
+  // 3. Auto-Dispatch new live buses
   if (typeof spawnLiveBus === "function") {
     setInterval(() => {
       if (isExternalApiMode) return;
@@ -1474,6 +1504,7 @@
     }, 14000);
   }
 
+  // 4. Main Animation Loop
   let lastTime = performance.now();
   let uiTick = 0;
 
@@ -1513,18 +1544,23 @@
 
   requestAnimationFrame(loop);
 
+  // 5. Snap all 15 routes to real OSM roads & re-project buses immediately
   if (typeof snapRoutesToRealRoads === "function") {
     snapRoutesToRealRoads((route, done, total) => {
+      if (typeof repositionFleetOnRoutes === "function") {
+        repositionFleetOnRoutes(fleet, route.id);
+      }
       updateRouteSourceData();
+      syncStopMarkerPositions();
       renderFareEstimator();
       updateFleetCounters(
         done < total
-          ? `Aligning roads (${done}/${total})...`
-          : "Auto-updating live (Tumakuru & Bengaluru)"
+          ? `Snapping roads (${done}/${total})...`
+          : "Road-Aligned Live Fleet (Tumakuru & Bengaluru)"
       );
     }).then((snapped) => {
       if (snapped === 0) {
-        updateFleetCounters("Auto-updating live (Offline Fallback)");
+        updateFleetCounters("Offline Fallback (check internet for road snapping)");
       }
     });
   }
