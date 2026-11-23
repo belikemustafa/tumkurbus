@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Namma Tumakuru & BLR — Live 3D Bus Map</title>
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Kannada:wght@500;700&display=swap" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
   <!-- Fullscreen 2D Top-Down Map with 3D Buses -->
@@ -20,7 +20,7 @@
         <h1>Namma Tumakuru <span>Live Bus Map</span></h1>
         <div class="live-status" id="feedStatus">
           <span class="pulse-dot"></span>
-          <span id="feedStatusText">78 Buses Active · Auto-updating live...</span>
+          <span id="feedStatusText">Loading live fleet...</span>
         </div>
       </div>
     </div>
@@ -32,7 +32,7 @@
       </div>
       <div class="btn-group" aria-label="Map Overlays">
         <button class="chip-btn active" id="btnToggleStops" title="Show or hide bus stops">Stops: ON</button>
-        <button class="chip-btn active" id="btnLangToggle" title="Switch stop language: Kannada + English / Kannada / English">EN + ಕನ್ನಡ</button>
+        <button class="chip-btn active" id="btnLangToggle" title="Switch stop language">EN + ಕನ್ನಡ</button>
         <button class="chip-btn active" id="btnScaleToggle" title="Toggle 3D bus size on map">Bus Size: Large</button>
       </div>
       <button class="alert-nav-btn" id="btnOpenAlertModal">Pass-By Alert</button>
@@ -85,7 +85,7 @@
     </div>
 
     <div class="drawer-tabs">
-      <button class="tab-btn active" data-tab="fleet" id="tabBtnFleet">Fleet (78)</button>
+      <button class="tab-btn active" data-tab="fleet" id="tabBtnFleet">Fleet</button>
       <button class="tab-btn" data-tab="routes" id="tabBtnRoutes">Routes (16)</button>
       <button class="tab-btn" data-tab="stops">Stops</button>
       <button class="tab-btn" data-tab="fares">Fares ₹</button>
@@ -273,13 +273,13 @@
   <!-- Toast Notice -->
   <div class="toast hidden" id="toast"></div>
 
-  <!-- Libraries -->
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Reliable jsDelivr Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 
-  <!-- App Modules -->
-  <script src="routes.js"></script>
-  <script src="bus3d.js"></script>
-  <script src="app.js"></script>
+  <!-- App Modules (cache-busted) -->
+  <script src="routes.js?v=6"></script>
+  <script src="bus3d.js?v=6"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
