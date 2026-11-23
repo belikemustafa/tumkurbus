@@ -5,24 +5,13 @@
     ROUTES,
     STOPS,
     haversineMeters,
+    snapRoutesToRealRoads,
     createInitialFleet,
     stepFleet
   } = window.TumkurData;
 
-  // Guaranteed-uptime raster tile styles (zero API keys)
+  // Street & Satellite Only (Dark Mode Removed)
   const MAP_STYLES = {
-    dark: {
-      version: 8,
-      sources: {
-        basemap: {
-          type: "raster",
-          tiles: ["https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png"],
-          tileSize: 256,
-          attribution: "© OpenStreetMap © CARTO"
-        }
-      },
-      layers: [{ id: "basemap", type: "raster", source: "basemap" }]
-    },
     street: {
       version: 8,
       sources: {
@@ -55,59 +44,73 @@
   let fleet = createInitialFleet();
   let selectedRouteFilter = "ALL";
   let selectedBusId = null;
-  let chaseCamActive = false;
+  let followBusActive = false;
   let boostScale = true;
   let apiPollTimer = null;
   let gpsWatchId = null;
+  let currentStyleName = "street";
 
   const busMarkers = new Map();
   let stopMarkers = [];
 
-  // Initialize MapLibre 3D Map centered on Tumakuru
+  // Strict 2D Top-Down Map (pitch locked at 0, rotation disabled)
   const map = new maplibregl.Map({
     container: "map",
-    style: MAP_STYLES.dark,
+    style: MAP_STYLES.street,
     center: TUMKUR_CENTER,
-    zoom: 13.6,
-    pitch: 58,
-    bearing: -15,
+    zoom: 13.4,
+    pitch: 0,
+    maxPitch: 0,
+    bearing: 0,
+    dragRotate: false,
+    pitchWithRotate: false,
+    touchPitch: false,
     antialias: true
   });
 
-  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
+  map.touchZoomRotate.disableRotation();
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
 
-  // 3D Turntable Inspector
   const inspector3D = new window.Bus3D.BusInspector3D(
     document.getElementById("inspectorCanvas")
   );
 
-  // Attach route polylines + 3D bus layer whenever map style loads
-  function attachMapLayers() {
-    const routeFeatures = ROUTES.map((r) => ({
-      type: "Feature",
-      properties: { id: r.id, color: r.color, name: r.name },
-      geometry: { type: "LineString", coordinates: r.path }
-    }));
+  function buildRouteGeoJSON() {
+    return {
+      type: "FeatureCollection",
+      features: ROUTES.map((r) => ({
+        type: "Feature",
+        properties: { id: r.id, color: r.color, name: r.name, category: r.category },
+        geometry: { type: "LineString", coordinates: r.path }
+      }))
+    };
+  }
 
+  function updateRouteSourceData() {
+    const src = map.getSource("tumkur-routes");
+    if (src) src.setData(buildRouteGeoJSON());
+  }
+
+  function attachMapLayers() {
     map.addSource("tumkur-routes", {
       type: "geojson",
-      data: { type: "FeatureCollection", features: routeFeatures }
+      data: buildRouteGeoJSON()
     });
 
-    // Soft outer glow under each route
+    // Crisp white casing so route lines read clearly on both Street and Satellite maps
     map.addLayer({
-      id: "routes-glow",
+      id: "routes-casing",
       type: "line",
       source: "tumkur-routes",
       layout: { "line-join": "round", "line-cap": "round" },
       paint: {
-        "line-color": ["get", "color"],
-        "line-width": 8,
-        "line-opacity": 0.25
+        "line-color": "#ffffff",
+        "line-width": currentStyleName === "satellite" ? 6.5 : 5.5,
+        "line-opacity": 0.85
       }
     });
 
-    // Crisp corridor line
+    // Colored route centerline
     map.addLayer({
       id: "routes-core",
       type: "line",
@@ -116,11 +119,11 @@
       paint: {
         "line-color": ["get", "color"],
         "line-width": 3.5,
-        "line-opacity": 0.92
+        "line-opacity": 0.95
       }
     });
 
-    // Add Three.js 3D Bus Custom Layer
+    // 3D Bus WebGL Layer directly on top of the 2D map
     const busLayer = window.Bus3D.createMapBusLayer({
       originLng: TUMKUR_CENTER[0],
       originLat: TUMKUR_CENTER[1],
@@ -136,20 +139,25 @@
 
   function applyRouteLayerFilter() {
     if (!map.getLayer("routes-core")) return;
-    const filter =
-      selectedRouteFilter === "ALL"
-        ? null
-        : ["==", ["get", "id"], selectedRouteFilter];
+    let filter = null;
+    if (selectedRouteFilter === "CITY") {
+      filter = ["==", ["get", "category"], "city"];
+    } else if (selectedRouteFilter === "BLR") {
+      filter = ["==", ["get", "category"], "bangalore"];
+    } else if (selectedRouteFilter !== "ALL") {
+      filter = ["==", ["get", "id"], selectedRouteFilter];
+    }
     map.setFilter("routes-core", filter);
-    map.setFilter("routes-glow", filter);
+    map.setFilter("routes-casing", filter);
   }
 
   function getVisibleFleet() {
     if (selectedRouteFilter === "ALL") return fleet;
+    if (selectedRouteFilter === "CITY") return fleet.filter((b) => b.category === "city");
+    if (selectedRouteFilter === "BLR") return fleet.filter((b) => b.category === "bangalore");
     return fleet.filter((b) => b.routeId === selectedRouteFilter);
   }
 
-  // Render Stop Pins
   function initStopMarkers() {
     stopMarkers.forEach((m) => m.remove());
     stopMarkers = STOPS.map((stop) => {
@@ -163,7 +171,7 @@
 
       el.addEventListener("click", () => {
         document.getElementById("stopSelect").value = stop.id;
-        renderLedBoard();
+        renderArrivalBoard();
         switchTab("stops");
       });
 
@@ -174,7 +182,6 @@
     });
   }
 
-  // Sync clickable floating route badges above each 3D bus
   function syncBusMarkers() {
     const visible = getVisibleFleet();
     const visibleIds = new Set(visible.map((b) => b.id));
@@ -208,14 +215,12 @@
     });
   }
 
-  // Select a Bus & Open 3D Inspector
   function selectBus(busId, flyToBus = false) {
     const bus = fleet.find((b) => b.id === busId);
     if (!bus) return;
 
     selectedBusId = busId;
-    const panel = document.getElementById("busInspector");
-    panel.classList.remove("hidden");
+    document.getElementById("busInspector").classList.remove("hidden");
 
     const tag = document.getElementById("inspRouteTag");
     tag.textContent = bus.routeId;
@@ -231,9 +236,9 @@
       map.flyTo({
         center: [bus.lng, bus.lat],
         zoom: Math.max(map.getZoom(), 15.6),
-        pitch: 65,
-        bearing: bus.heading,
-        duration: 900
+        pitch: 0,
+        bearing: 0,
+        duration: 850
       });
     }
   }
@@ -246,15 +251,20 @@
     document.getElementById("inspCrowd").textContent = bus.crowd || "Moderate";
   }
 
-  // Render Filter Pills
   function renderRoutePills() {
     const wrap = document.getElementById("routeFilterPills");
-    const items = [{ id: "ALL", color: "#eab308" }, ...ROUTES];
+    const items = [
+      { id: "ALL", label: "All (36)", color: "#0f172a" },
+      { id: "CITY", label: "Tumakuru", color: "#dc2626" },
+      { id: "BLR", label: "To BLR", color: "#1d4ed8" },
+      ...ROUTES.map((r) => ({ id: r.id, label: r.id, color: r.color }))
+    ];
+
     wrap.innerHTML = items
-      .map((r) => {
-        const active = selectedRouteFilter === r.id;
-        const bg = active ? `style="background:${r.color};color:${r.id === "ALL" || r.id === "202" ? "#0b0e14" : "#fff"}"` : "";
-        return `<button class="route-pill ${active ? "active" : ""}" data-route="${r.id}" ${bg}>${r.id}</button>`;
+      .map((item) => {
+        const active = selectedRouteFilter === item.id;
+        const style = active ? `style="background:${item.color}"` : "";
+        return `<button class="route-pill ${active ? "active" : ""}" data-route="${item.id}" ${style}>${item.label}</button>`;
       })
       .join("");
 
@@ -264,11 +274,13 @@
         renderRoutePills();
         applyRouteLayerFilter();
         renderFleetList();
+        if (selectedRouteFilter === "BLR" || selectedRouteFilter.startsWith("BLR-")) {
+          map.flyTo({ ...LANDMARKS.corridor, pitch: 0, bearing: 0, duration: 900 });
+        }
       });
     });
   }
 
-  // Render Live Fleet List
   function renderFleetList() {
     const query = document.getElementById("fleetSearch").value.trim().toLowerCase();
     const list = document.getElementById("fleetList");
@@ -307,7 +319,6 @@
     });
   }
 
-  // Render Routes Tab
   function renderRoutesTab() {
     const container = document.getElementById("routesList");
     container.innerHTML = ROUTES.map((r) => {
@@ -320,7 +331,7 @@
               <span style="font-size:11px;color:var(--muted)">${r.livery}</span>
               <div class="route-card-title">${r.name}</div>
             </div>
-            <span style="font-size:11px;color:var(--emerald);font-weight:700">${activeCount} Live</span>
+            <span style="font-size:11px;color:var(--emerald);font-weight:800;white-space:nowrap">${activeCount} Live</span>
           </div>
           <div class="route-stops">
             ${r.stops.map((s) => `<div class="route-stop-row"><span>${s.name}</span><span>●</span></div>`).join("")}
@@ -336,53 +347,55 @@
         applyRouteLayerFilter();
         switchTab("fleet");
         renderFleetList();
+        if (selectedRouteFilter.startsWith("BLR-")) {
+          map.flyTo({ ...LANDMARKS.corridor, pitch: 0, bearing: 0, duration: 900 });
+        } else {
+          map.flyTo({ ...LANDMARKS.tumkur, pitch: 0, bearing: 0, duration: 900 });
+        }
       });
     });
   }
 
-  // Populate Stop Selector + LED Arrival Board
   function initStopBoard() {
     const select = document.getElementById("stopSelect");
-    select.innerHTML = STOPS.map(
-      (s) => `<option value="${s.id}">${s.name}</option>`
-    ).join("");
-    select.addEventListener("change", renderLedBoard);
+    select.innerHTML = STOPS.map((s) => `<option value="${s.id}">${s.name}</option>`).join("");
+    select.addEventListener("change", renderArrivalBoard);
 
     const gpsSelect = document.getElementById("gpsRouteSelect");
     gpsSelect.innerHTML = ROUTES.map(
       (r) => `<option value="${r.id}">${r.id} — ${r.name}</option>`
     ).join("");
 
-    renderLedBoard();
+    renderArrivalBoard();
   }
 
-  function renderLedBoard() {
+  function renderArrivalBoard() {
     const stopId = document.getElementById("stopSelect").value;
     const stop = STOPS.find((s) => s.id === stopId) || STOPS[0];
-    const board = document.getElementById("ledBoard");
+    const board = document.getElementById("arrivalBoard");
 
     const arrivals = fleet
       .map((bus) => {
         const distM = haversineMeters([bus.lng, bus.lat], stop.coord);
-        const speedMps = Math.max(4.5, ((bus.speedKmh || 24) * 1000) / 3600);
+        const speedMps = Math.max(5, ((bus.speedKmh || 28) * 1000) / 3600);
         const mins = Math.max(1, Math.round(distM / speedMps / 60));
         return { bus, distKm: (distM / 1000).toFixed(1), mins };
       })
       .sort((a, b) => a.mins - b.mins)
-      .slice(0, 7);
+      .slice(0, 8);
 
     board.innerHTML = `
-      <div class="led-title">TUMAKURU LIVE ARRIVALS · ${stop.name.toUpperCase()}</div>
+      <div class="board-title">LIVE ARRIVALS · ${stop.name.toUpperCase()}</div>
       ${arrivals
         .map(
           ({ bus, distKm, mins }) => `
-        <div class="led-row">
-          <span class="route-tag" style="background:${bus.color};text-align:center">${bus.routeId}</span>
+        <div class="board-row">
+          <span class="route-tag" style="background:${bus.color};text-align:center;margin:0">${bus.routeId}</span>
           <div>
-            <div>${bus.reg}</div>
-            <div style="font-size:10px;color:#94a3b8">${distKm} km away · ${bus.crowd}</div>
+            <div style="font-weight:700">${bus.reg}</div>
+            <div style="font-size:10.5px;color:var(--muted)">${distKm} km away · ${bus.crowd}</div>
           </div>
-          <div class="led-eta">${mins <= 1 ? "DUE" : `${mins} min`}</div>
+          <div class="board-eta">${mins <= 1 ? "DUE" : `${mins} min`}</div>
         </div>`
         )
         .join("")}
@@ -406,7 +419,7 @@
     t._timer = setTimeout(() => t.classList.add("hidden"), 3000);
   }
 
-  // Bind UI Controls
+  // UI Bindings
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
@@ -417,50 +430,37 @@
 
   document.getElementById("fleetSearch").addEventListener("input", renderFleetList);
 
-  // Map Style Switcher
+  // Street / Satellite Switcher
   document.querySelectorAll("[data-style]").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll("[data-style]").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      map.setStyle(MAP_STYLES[btn.dataset.style]);
+      currentStyleName = btn.dataset.style;
+      map.setStyle(MAP_STYLES[currentStyleName]);
     });
   });
 
-  // Camera Presets
-  document.getElementById("btn3DView").addEventListener("click", () => {
-    chaseCamActive = false;
-    updateChaseButton();
-    map.flyTo({ center: TUMKUR_CENTER, zoom: 13.8, pitch: 60, bearing: -15, duration: 900 });
-  });
-
-  document.getElementById("btn2DView").addEventListener("click", () => {
-    chaseCamActive = false;
-    updateChaseButton();
-    map.flyTo({ center: TUMKUR_CENTER, zoom: 13.2, pitch: 0, bearing: 0, duration: 800 });
-  });
-
+  // 3D Bus Visual Size Toggle
   document.getElementById("btnScaleToggle").addEventListener("click", (e) => {
     boostScale = !boostScale;
-    e.target.textContent = boostScale ? "3D Scale: Boost" : "3D Scale: Real";
+    e.target.classList.toggle("active", boostScale);
+    e.target.textContent = boostScale ? "3D Bus Size: Boost" : "3D Bus Size: Real";
   });
 
-  // Landmark Quick Jumps
+  // Quick Jump Landmarks (strict 2D top view)
   document.querySelectorAll("[data-fly]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      chaseCamActive = false;
-      updateChaseButton();
+      followBusActive = false;
+      updateFollowButton();
       const target = LANDMARKS[btn.dataset.fly];
-      if (target) map.flyTo({ ...target, duration: 1000 });
+      if (target) map.flyTo({ ...target, pitch: 0, bearing: 0, duration: 900 });
     });
   });
 
   // Nearest Stop Geolocation
   document.getElementById("btnNearestStop").addEventListener("click", () => {
-    if (!navigator.geolocation) {
-      showToast("Geolocation not supported by your browser.");
-      return;
-    }
-    showToast("Finding nearest Tumakuru bus stop...");
+    if (!navigator.geolocation) return showToast("Geolocation not supported.");
+    showToast("Finding nearest bus stop...");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const userCoord = [pos.coords.longitude, pos.coords.latitude];
@@ -474,20 +474,20 @@
           }
         });
         document.getElementById("stopSelect").value = nearest.id;
-        renderLedBoard();
+        renderArrivalBoard();
         switchTab("stops");
-        map.flyTo({ center: nearest.coord, zoom: 15.6, pitch: 58, duration: 1000 });
+        map.flyTo({ center: nearest.coord, zoom: 15.6, pitch: 0, bearing: 0, duration: 900 });
         showToast(`Nearest stop: ${nearest.name} (${(bestDist / 1000).toFixed(1)} km)`);
       },
       () => showToast("Location permission denied.")
     );
   });
 
-  // Inspector Buttons
+  // Inspector Controls
   document.getElementById("btnCloseInspector").addEventListener("click", () => {
     document.getElementById("busInspector").classList.add("hidden");
-    chaseCamActive = false;
-    updateChaseButton();
+    followBusActive = false;
+    updateFollowButton();
     selectedBusId = null;
     renderFleetList();
   });
@@ -503,16 +503,16 @@
     inspector3D.setWireframe(active);
   });
 
-  function updateChaseButton() {
-    const btn = document.getElementById("btnChaseCam");
-    btn.classList.toggle("active-chase", chaseCamActive);
-    btn.textContent = chaseCamActive ? "Stop 3D Chase Cam" : "Start 3D Chase Cam";
+  function updateFollowButton() {
+    const btn = document.getElementById("btnFollowBus");
+    btn.classList.toggle("active-follow", followBusActive);
+    btn.textContent = followBusActive ? "Stop Following Bus" : "Follow Bus on Map";
   }
 
-  document.getElementById("btnChaseCam").addEventListener("click", () => {
-    chaseCamActive = !chaseCamActive;
-    updateChaseButton();
-    if (chaseCamActive) showToast("3D Chase Cam locked onto bus.");
+  document.getElementById("btnFollowBus").addEventListener("click", () => {
+    followBusActive = !followBusActive;
+    updateFollowButton();
+    if (followBusActive) showToast("Following bus in 2D top view.");
   });
 
   // Live Feed / GPS Modal
@@ -539,6 +539,7 @@
           return {
             id: item.id || `live-${idx}`,
             routeId: r.id,
+            category: r.category,
             color: r.color,
             accent: r.accent,
             reg: item.reg || `LIVE-${idx + 1}`,
@@ -556,7 +557,7 @@
         document.getElementById("feedStatusText").textContent =
           `${fleet.length} Live API Buses Connected`;
         renderFleetList();
-        renderLedBoard();
+        renderArrivalBoard();
       } catch {
         showToast("Could not load JSON feed (check CORS / URL).");
       }
@@ -589,6 +590,7 @@
           myBus = {
             id: "my-gps-bus",
             routeId: r.id,
+            category: r.category,
             color: r.color,
             accent: r.accent,
             reg: "MY-GPS-LIVE",
@@ -630,11 +632,11 @@
     }
     fleet = createInitialFleet();
     document.getElementById("feedStatusText").textContent =
-      `${fleet.length} Buses Active · Simulated Telemetry`;
+      `${fleet.length} Buses Active · Road-Snapped Simulation`;
     renderFleetList();
-    renderLedBoard();
+    renderArrivalBoard();
     feedModal.classList.add("hidden");
-    showToast("Switched back to simulated Tumakuru fleet.");
+    showToast("Switched back to simulated fleet.");
   });
 
   // Main Animation Loop
@@ -652,12 +654,11 @@
     if (selectedBusId) {
       const activeBus = fleet.find((b) => b.id === selectedBusId);
       if (activeBus) {
-        if (chaseCamActive) {
+        if (followBusActive) {
           map.easeTo({
             center: [activeBus.lng, activeBus.lat],
-            bearing: activeBus.heading,
-            pitch: 66,
-            zoom: 16.2,
+            pitch: 0,
+            bearing: 0,
             duration: 280,
             easing: (t) => t
           });
@@ -671,15 +672,28 @@
     if (now - uiTick > 1000) {
       uiTick = now;
       renderFleetList();
-      renderLedBoard();
+      renderArrivalBoard();
     }
   }
 
-  // Boot
+  // Boot & Snap all 9 routes to real OSM roads via OSRM
   initStopMarkers();
   renderRoutePills();
   renderFleetList();
   renderRoutesTab();
   initStopBoard();
   requestAnimationFrame(loop);
+
+  snapRoutesToRealRoads((route, done, total) => {
+    updateRouteSourceData();
+    document.getElementById("feedStatusText").textContent =
+      done < total
+        ? `36 Buses Active · Aligning roads (${done}/${total})...`
+        : `36 Buses Active · Road-Aligned (Tumakuru & Bengaluru)`;
+  }).then((snapped) => {
+    if (snapped === 0) {
+      document.getElementById("feedStatusText").textContent =
+        "36 Buses Active · Simulated Telemetry (Offline Fallback)";
+    }
+  });
 })();
